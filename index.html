@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KitchenOps Hub • Control Operativo y Trazabilidad Gastronómica</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f4f6f9; }
+        .card-tarea { transition: all 0.2s ease; border-left: 6px solid #0d6efd; }
+        .card-tarea.completada { border-left-color: #198754; background-color: #e8f5e9; opacity: 0.85; }
+        .card-tarea.prioridad-Alta { border-left-color: #dc3545; }
+        .check-grande { width: 1.8em; height: 1.8em; cursor: pointer; }
+        .badge-estacion { font-size: 0.85rem; }
+        #pantalla-bloqueo {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #212529; z-index: 99999;
+            display: flex; align-items: center; justify-content: center;
+        }
+    </style>
+</head>
+<body>
+
+<!-- PANTALLA DE BLOQUEO DEMO -->
+<div id="pantalla-bloqueo">
+    <div class="card p-4 shadow-lg text-center" style="max-width: 360px; width: 100%;">
+        <h4 class="fw-bold mb-2">🔒 KitchenOps Hub</h4>
+        <p class="text-muted small mb-2">Control de Protocolos BPM y Trazabilidad en Turno</p>
+        <span class="badge bg-info text-dark mb-3">PIN Demo Reclutadores: 1234</span>
+        <input type="password" id="input-pin" class="form-control text-center fs-3 mb-3" maxlength="4" placeholder="••••" onkeyup="if(event.key==='Enter') verificarPin()">
+        <button class="btn btn-dark fw-bold w-100 py-2" onclick="verificarPin()">Ingresar al Sistema</button>
+        <div id="error-pin" class="text-danger small mt-2 d-none">PIN incorrecto. Usa 1234 para la demo.</div>
+    </div>
+</div>
+
+<div class="container py-4">
+    <!-- Encabezado y Progreso -->
+    <div class="bg-white p-4 rounded shadow-sm mb-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+                <h2 class="fw-bold mb-1">🍳 KitchenOps Hub • Gestión Operativa</h2>
+                <p class="text-muted mb-0">v1.0 Base • Checklist de Turno, Control BPM/HACCP y Trazabilidad</p>
+            </div>
+            <div class="d-flex gap-2 flex-wrap align-items-center">
+                <input type="text" id="responsable-traza" class="form-control form-control-sm" style="width: 180px;" placeholder="Encargado de turno" onchange="guardarResponsableTraza()">
+                <button class="btn btn-primary btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#modalNuevaTarea">➕ Nueva Tarea</button>
+                <button class="btn btn-outline-secondary btn-sm" onclick="reiniciarTurno()">🔄 Reiniciar Turno</button>
+            </div>
+        </div>
+
+        <div class="mt-3">
+            <div class="d-flex justify-content-between mb-1">
+                <span class="fw-semibold">Progreso Protocolo Diario (Apertura, Producción y Cierre)</span>
+                <span id="texto-progreso" class="fw-bold text-success">0%</span>
+            </div>
+            <div class="progress" style="height: 22px;">
+                <div id="barra-progreso" class="progress-bar bg-success progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros y Buscador -->
+    <div class="row g-2 mb-4">
+        <div class="col-md-8">
+            <div class="btn-group w-100 flex-wrap" role="group">
+                <button type="button" class="btn btn-dark" onclick="filtrarEstacion('Todas')">📍 Todas</button>
+                <button type="button" class="btn btn-outline-dark" onclick="filtrarEstacion('Bodega y Cámaras')">📦 Bodega y Cámaras</button>
+                <button type="button" class="btn btn-outline-dark" onclick="filtrarEstacion('Sanitización')">🧼 Sanitización</button>
+                <button type="button" class="btn btn-outline-dark" onclick="filtrarEstacion('Despacho')">🍰 Pase / Despacho</button>
+                <button type="button" class="btn btn-outline-dark" onclick="filtrarEstacion('Cuarto Frío')">❄️ Cuarto Frío</button>
+                <button type="button" class="btn btn-outline-dark" onclick="filtrarEstacion('Caliente')">🔥 Cuarto Caliente</button>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <input type="text" id="buscador" class="form-control" placeholder="🔍 Buscar tarea, sanitizante, temperatura..." onkeyup="renderizarTareas()">
+        </div>
+    </div>
+
+    <div id="contenedor-tareas" class="row g-3"></div>
+
+    <!-- Traspaso de Turno -->
+    <div class="bg-white p-4 rounded shadow-sm mt-4 border-top border-4 border-primary">
+        <h5 class="fw-bold">📋 Cierre Diario de Cocina y Control de Pedidos</h5>
+        <p class="text-muted small mb-2">
+            <strong>Ventanas de pedidos estándar:</strong> Panadería Industrial (Lun/Mié 15:00) • Distribuidora Cárnica (Lun-Vie 15:00) • Congelados (Lun/Mié/Vie 16:00) • Vegetales Frescos (24 hrs antes).
+        </p>
+        <textarea id="notas-turno" class="form-control mb-3" rows="2" placeholder="Ej: Mesón de entrega sanitizado. Gas cortado y puertas área sucia cerradas con llave..."></textarea>
+        <button class="btn btn-success fw-bold w-100 py-2" onclick="generarReporte()">📲 Generar Resumen de Turno para Reporte Rápido</button>
+        <pre id="reporte-salida" class="bg-light p-3 mt-3 rounded border d-none" style="white-space: pre-wrap;"></pre>
+    </div>
+</div>
+
+<!-- MODAL NUEVA TAREA -->
+<div class="modal fade" id="modalNuevaTarea" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title fw-bold">➕ Agregar Nueva Tarea al Checklist</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Nombre de la Tarea</label>
+                        <input type="text" id="nt-tarea" class="form-control" placeholder="Ej: Sanitizar vegetales de turno">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Alcance / Planilla</label>
+                        <input type="text" id="nt-cantidad" class="form-control" placeholder="Ej: Registro BPM Diario">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Estación</label>
+                        <select id="nt-estacion" class="form-select">
+                            <option value="Bodega y Cámaras">📦 Bodega y Cámaras</option>
+                            <option value="Sanitización">🧼 Sanitización</option>
+                            <option value="Despacho">🍰 Pase / Despacho</option>
+                            <option value="Cuarto Frío">❄️ Cuarto Frío</option>
+                            <option value="Caliente">🔥 Cuarto Caliente</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Turno</label>
+                        <select id="nt-turno" class="form-select">
+                            <option value="Apertura">Apertura</option>
+                            <option value="Producción AM">Producción AM</option>
+                            <option value="Servicio Almuerzo">Servicio Almuerzo</option>
+                            <option value="Cierre">Cierre</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Prioridad</label>
+                        <select id="nt-prioridad" class="form-select">
+                            <option value="Alta">🔴 Alta (Crítico)</option>
+                            <option value="Media">🟡 Media</option>
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Ubicación</label>
+                        <input type="text" id="nt-ubicacion" class="form-control" placeholder="Ej: Cámara de frío #2">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Regla FIFO / Control</label>
+                        <input type="text" id="nt-fifo" class="form-control" placeholder="Ej: Rotular fecha de elaboración y vencimiento">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Guía Paso a Paso</label>
+                        <textarea id="nt-guia" class="form-control" rows="2"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary fw-bold" onclick="guardarNuevaTarea()">💾 Guardar Tarea</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+const PIN_DEMO = "1234";
+
+function verificarPin() {
+    if (document.getElementById('input-pin').value === PIN_DEMO) {
+        document.getElementById('pantalla-bloqueo').style.display = 'none';
+        sessionStorage.setItem('kitchenOpsAuth', 'true');
+    } else {
+        document.getElementById('error-pin').classList.remove('d-none');
+        document.getElementById('input-pin').value = '';
+    }
+}
+if (sessionStorage.getItem('kitchenOpsAuth') === 'true') {
+    document.getElementById('pantalla-bloqueo').style.display = 'none';
+}
+
+const datosIniciales = [
+    {
+        id: 1, estacion: "Cuarto Frío", turno: "Apertura",
+        tarea: "1° Revisión de Higiene del Personal y Sanitización de Superficies",
+        cantidad: "Planilla BPM de Ingreso", prioridad: "Alta",
+        ubicacion: "Planta Baja y Planta Alta",
+        fifo: "Verificar uniforme completo, uñas cortas sin esmalte y ausencia de joyas.",
+        guiaNovato: "1. Completar registro de higiene del equipo.\n2. Aplicar solución sanitizante aprobada en todos los mesones de acero inoxidable antes de iniciar producción.",
+        completado: false
+    },
+    {
+        id: 2, estacion: "Bodega y Cámaras", turno: "Apertura",
+        tarea: "2° Control de Temperaturas AM (Cámaras de Frío y Congeladores)",
+        cantidad: "Registro Térmico Diario", prioridad: "Alta",
+        ubicacion: "Sala de Procesos y Línea Fría",
+        fifo: "Límite crítico refrigeración: +5 °C | Congelación: -18 °C.",
+        guiaNovato: "1. Registrar temperatura digital de cada equipo.\n2. Si algún equipo supera el límite crítico: Dar Aviso inmediato y trasladar producto a equipo de respaldo.",
+        completado: false
+    },
+    {
+        id: 3, estacion: "Bodega y Cámaras", turno: "Producción AM",
+        tarea: "3° Verificación de Stock, Armado de Canasta AM y Rotación FIFO",
+        cantidad: "Control de Inventario Interno", prioridad: "Alta",
+        ubicacion: "Bodega Central -> Montacargas -> Línea de Servicio",
+        fifo: "Aplicar método PEPS/FIFO: lo primero que vence sale primero a producción.",
+        guiaNovato: "1. Auditar quiebres de stock en cuarto frío y caliente.\n2. Sanitizar vegetales en zona de lavado antes de bajarlos a línea de servicio.",
+        completado: false
+    },
+    {
+        id: 4, estacion: "Caliente", turno: "Cierre",
+        tarea: "4° Cierre Técnico de Seguridad (Corte de Gas, Equipos y Temperaturas PM)",
+        cantidad: "Protocolo de Cierre en 10 Pasos", prioridad: "Alta",
+        ubicacion: "Toda la Planta",
+        fifo: "Registrar temperaturas de cierre y cuadrar inventario final del turno.",
+        guiaNovato: "1. Sanitizar mesón de entrega y dejar despejado.\n2. Desenchufar equipos menores y apagar aire acondicionado de cuarto frío.\n3. Cortar llave general de gas y apagar extractores.",
+        completado: false
+    }
+];
+
+let tareas = JSON.parse(localStorage.getItem('kitchenOps_tareas_v1')) || datosIniciales;
+let filtroActual = 'Todas';
+
+document.getElementById('responsable-traza').value = localStorage.getItem('kitchenOps_resp') || 'Encargado Demo';
+function guardarResponsableTraza() {
+    localStorage.setItem('kitchenOps_resp', document.getElementById('responsable-traza').value);
+}
+
+function renderizarTareas() {
+    const contenedor = document.getElementById('contenedor-tareas');
+    const busqueda = document.getElementById('buscador').value.toLowerCase();
+    contenedor.innerHTML = '';
+
+    const filtradas = tareas.filter(t => {
+        const okEst = (filtroActual === 'Todas' || t.estacion === filtroActual);
+        const okTxt = t.tarea.toLowerCase().includes(busqueda) || t.ubicacion.toLowerCase().includes(busqueda) || t.fifo.toLowerCase().includes(busqueda);
+        return okEst && okTxt;
+    });
+
+    filtradas.forEach(t => {
+        const clase = t.completado ? 'completada' : `prioridad-${t.prioridad}`;
+        const tachado = t.completado ? 'text-decoration-line-through text-muted' : '';
+        contenedor.innerHTML += `
+        <div class="col-12">
+            <div class="card card-tarea shadow-sm ${clase}">
+                <div class="card-body">
+                    <div class="d-flex align-items-start gap-3">
+                        <input class="form-check-input check-grande mt-1" type="checkbox" ${t.completado ? 'checked' : ''} onchange="cambiarEstado(${t.id})">
+                        <div class="w-100">
+                            <div class="d-flex justify-content-between flex-wrap">
+                                <div>
+                                    <span class="badge bg-dark badge-estacion me-1">📍 ${t.estacion}</span>
+                                    <span class="badge bg-secondary badge-estacion me-1">🕒 ${t.turno}</span>
+                                    <span class="badge ${t.prioridad === 'Alta' ? 'bg-danger' : 'bg-warning text-dark'} badge-estacion">Prioridad ${t.prioridad}</span>
+                                </div>
+                                <button class="btn btn-sm text-danger p-0" onclick="eliminarTarea(${t.id})">🗑️</button>
+                            </div>
+                            <h5 class="card-title fw-bold mt-2 mb-1 ${tachado}">${t.tarea}</h5>
+                            <p class="mb-1 fw-semibold text-primary">📦 Alcance: ${t.cantidad}</p>
+                            <p class="mb-1 small"><strong>🗺️ Ubicación:</strong> ${t.ubicacion}</p>
+                            <p class="mb-2 small text-danger"><strong>🏷️ Control Crítico:</strong> ${t.fifo}</p>
+                            <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#guia-${t.id}">📖 Ver protocolo</button>
+                            <div class="collapse mt-2" id="guia-${t.id}">
+                                <div class="card card-body bg-light border-0 small" style="white-space: pre-line;">${t.guiaNovato}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+    });
+    actualizarProgreso();
+}
+
+function guardarNuevaTarea() {
+    const tarea = document.getElementById('nt-tarea').value.trim();
+    const cantidad = document.getElementById('nt-cantidad').value.trim();
+    if (!tarea || !cantidad) return alert("Completa el nombre y alcance de la tarea.");
+    tareas.push({
+        id: Date.now(),
+        estacion: document.getElementById('nt-estacion').value,
+        turno: document.getElementById('nt-turno').value,
+        prioridad: document.getElementById('nt-prioridad').value,
+        tarea, cantidad,
+        ubicacion: document.getElementById('nt-ubicacion').value || "Planta General",
+        fifo: document.getElementById('nt-fifo').value || "Aplicar protocolo estándar",
+        guiaNovato: document.getElementById('nt-guia').value || "Seguir procedimiento operativo.",
+        completado: false
+    });
+    localStorage.setItem('kitchenOps_tareas_v1', JSON.stringify(tareas));
+    renderizarTareas();
+    bootstrap.Modal.getInstance(document.getElementById('modalNuevaTarea')).hide();
+}
+
+function eliminarTarea(id) {
+    if (confirm("¿Eliminar esta tarea?")) {
+        tareas = tareas.filter(t => t.id !== id);
+        localStorage.setItem('kitchenOps_tareas_v1', JSON.stringify(tareas));
+        renderizarTareas();
+    }
+}
+
+function cambiarEstado(id) {
+    tareas = tareas.map(t => t.id === id ? { ...t, completado: !t.completado } : t);
+    localStorage.setItem('kitchenOps_tareas_v1', JSON.stringify(tareas));
+    renderizarTareas();
+}
+
+function filtrarEstacion(est) { filtroActual = est; renderizarTareas(); }
+
+function actualizarProgreso() {
+    const total = tareas.length;
+    const listas = tareas.filter(t => t.completado).length;
+    const pct = total === 0 ? 0 : Math.round((listas / total) * 100);
+    document.getElementById('barra-progreso').style.width = pct + '%';
+    document.getElementById('texto-progreso').innerText = `${pct}% (${listas} de ${total} etapas listas)`;
+}
+
+function reiniciarTurno() {
+    if (confirm("¿Reiniciar checks para un nuevo turno?")) {
+        tareas = tareas.map(t => ({ ...t, completado: false }));
+        localStorage.setItem('kitchenOps_tareas_v1', JSON.stringify(tareas));
+        document.getElementById('notas-turno').value = '';
+        document.getElementById('reporte-salida').classList.add('d-none');
+        renderizarTareas();
+    }
+}
+
+function generarReporte() {
+    const listas = tareas.filter(t => t.completado);
+    const pendientes = tareas.filter(t => !t.completado);
+    const notas = document.getElementById('notas-turno').value || "Sin observaciones.";
+    const fecha = new Date().toLocaleDateString('es-CL');
+    const resp = document.getElementById('responsable-traza').value || 'Encargado';
+
+    let texto = `✅ *REPORTE OPERATIVO DE TURNO (${fecha})*\n`;
+    texto += `👤 *Responsable:* ${resp}\n`;
+    texto += `📊 *Avance Protocolo:* ${listas.length} de ${tareas.length} etapas completadas.\n\n`;
+    if (pendientes.length > 0) {
+        texto += `⚠️ *PENDIENTES:*\n` + pendientes.map(p => `- [${p.estacion}] ${p.tarea}`).join('\n') + `\n\n`;
+    }
+    texto += `📝 *NOVEDADES / PEDIDOS:*\n${notas}`;
+
+    const caja = document.getElementById('reporte-salida');
+    caja.innerText = texto;
+    caja.classList.remove('d-none');
+    navigator.clipboard.writeText(texto);
+    alert("Reporte copiado al portapapeles.");
+}
+
+renderizarTareas();
+</script>
+</body>
+</html>
