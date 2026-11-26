@@ -7,11 +7,56 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body { background-color: #f4f6f9; }
+        /* Estilos Checklist */
         .card-tarea { transition: all 0.2s ease; border-left: 6px solid #0d6efd; }
         .card-tarea.completada { border-left-color: #198754; background-color: #e8f5e9; opacity: 0.85; }
         .card-tarea.prioridad-Alta { border-left-color: #dc3545; }
         .check-grande { width: 1.8em; height: 1.8em; cursor: pointer; }
         .badge-estacion { font-size: 0.85rem; }
+
+        /* Estilos del Plano / Croquis de Planta */
+        .plano-container {
+            background: #ffffff;
+            border: 3px solid #343a40;
+            border-radius: 12px;
+            padding: 20px;
+            position: relative;
+        }
+        .zona-cocina {
+            border: 2px dashed #adb5bd;
+            border-radius: 10px;
+            padding: 18px;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .zona-cocina:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+            border-style: solid;
+        }
+        .zona-sanitizacion { background-color: #e3f2fd; border-color: #0d6efd; }
+        .zona-frio { background-color: #e0f7fa; border-color: #0dcaf0; }
+        .zona-caliente { background-color: #fbe9e7; border-color: #dc3545; }
+        .zona-bodega { background-color: #fff8e1; border-color: #ffc107; }
+        .zona-despacho { background-color: #f3e5f5; border-color: #6f42c1; }
+
+        .pasillo-central {
+            background: repeating-linear-gradient(45deg, #fff3cd, #fff3cd 10px, #ffeeba 10px, #ffeeba 20px);
+            border: 2px dashed #ffc107;
+            border-radius: 6px;
+            text-align: center;
+            padding: 8px;
+            font-weight: bold;
+            color: #856404;
+            letter-spacing: 1px;
+            font-size: 0.85rem;
+        }
+
+        /* Pantalla de Bloqueo Demo */
         #pantalla-bloqueo {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: #212529; z-index: 99999;
@@ -24,9 +69,9 @@
 <!-- PANTALLA DE BLOQUEO DEMO -->
 <div id="pantalla-bloqueo">
     <div class="card p-4 shadow-lg text-center" style="max-width: 360px; width: 100%;">
-        <h4 class="fw-bold mb-2">🔒 KitchenOps Hub</h4>
-        <p class="text-muted small mb-2">Control de Protocolos BPM y Trazabilidad en Turno</p>
-        <span class="badge bg-info text-dark mb-3">PIN Demo Reclutadores: 1234</span>
+        <h4 class="fw-bold mb-2">KitchenOps Hub</h4>
+        <p class="text-muted small mb-2">Control de Protocolos BPM, Cámaras y Trazabilidad</p>
+        <span class="badge bg-info text-dark mb-3">PIN Demo: 1234</span>
         <input type="password" id="input-pin" class="form-control text-center fs-3 mb-3" maxlength="4" placeholder="••••" onkeyup="if(event.key==='Enter') verificarPin()">
         <button class="btn btn-dark fw-bold w-100 py-2" onclick="verificarPin()">Ingresar al Sistema</button>
         <div id="error-pin" class="text-danger small mt-2 d-none">PIN incorrecto. Usa 1234 para la demo.</div>
@@ -38,13 +83,13 @@
     <div class="bg-white p-4 rounded shadow-sm mb-4">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
             <div>
-                <h2 class="fw-bold mb-1">🍳 KitchenOps Hub • Gestión Operativa</h2>
-                <p class="text-muted mb-0">v1.0 Base • Checklist de Turno, Control BPM/HACCP y Trazabilidad</p>
+                <h2 class="fw-bold mb-1">KitchenOps Hub • Gestión Operativa</h2>
+                <p class="text-muted mb-0">v1.1 • Protocolos BPM/HACCP y Croquis Interactivo de Cámaras</p>
             </div>
             <div class="d-flex gap-2 flex-wrap align-items-center">
                 <input type="text" id="responsable-traza" class="form-control form-control-sm" style="width: 180px;" placeholder="Encargado de turno" onchange="guardarResponsableTraza()">
-                <button class="btn btn-primary btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#modalNuevaTarea">➕ Nueva Tarea</button>
-                <button class="btn btn-outline-secondary btn-sm" onclick="reiniciarTurno()">🔄 Reiniciar Turno</button>
+                <button class="btn btn-primary btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#modalNuevaTarea">+ Nueva Tarea</button>
+                <button class="btn btn-outline-secondary btn-sm" onclick="reiniciarTurno()">Reiniciar Turno</button>
             </div>
         </div>
 
@@ -57,36 +102,184 @@
                 <div id="barra-progreso" class="progress-bar bg-success progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
             </div>
         </div>
+
+        <!-- PESTAÑAS DE NAVEGACIÓN -->
+        <ul class="nav nav-pills nav-fill mt-4 pt-3 border-top gap-2" id="pills-tab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active fw-bold py-2" id="tab-checklist-btn" data-bs-toggle="pill" data-bs-target="#vista-checklist" type="button" role="tab">
+                    1. Protocolo y Canastas
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-bold py-2" id="tab-plano-btn" data-bs-toggle="pill" data-bs-target="#vista-plano" type="button" role="tab">
+                    2. Croquis 2 Pisos y Cámaras
+                </button>
+            </li>
+        </ul>
     </div>
 
-    <!-- Filtros y Buscador -->
-    <div class="row g-2 mb-4">
-        <div class="col-md-8">
-            <div class="btn-group w-100 flex-wrap" role="group">
-                <button type="button" class="btn btn-dark" onclick="filtrarEstacion('Todas')">📍 Todas</button>
-                <button type="button" class="btn btn-outline-dark" onclick="filtrarEstacion('Bodega y Cámaras')">📦 Bodega y Cámaras</button>
-                <button type="button" class="btn btn-outline-dark" onclick="filtrarEstacion('Sanitización')">🧼 Sanitización</button>
-                <button type="button" class="btn btn-outline-dark" onclick="filtrarEstacion('Despacho')">🍰 Pase / Despacho</button>
-                <button type="button" class="btn btn-outline-dark" onclick="filtrarEstacion('Cuarto Frío')">❄️ Cuarto Frío</button>
-                <button type="button" class="btn btn-outline-dark" onclick="filtrarEstacion('Caliente')">🔥 Cuarto Caliente</button>
+    <!-- CONTENIDO DE LAS PESTAÑAS -->
+    <div class="tab-content" id="pills-tabContent">
+
+        <!-- ================= PESTAÑA 1: CHECKLIST ================= -->
+        <div class="tab-pane fade show active" id="vista-checklist" role="tabpanel">
+            <div class="row g-2 mb-4">
+                <div class="col-md-8">
+                    <div class="btn-group w-100 flex-wrap" role="group">
+                        <button type="button" class="btn btn-dark" onclick="filtrarEstacion('Todas')">Todas</button>
+                        <button type="button" class="btn btn-outline-dark" onclick="filtrarEstacion('Bodega y Cámaras')">P2: Procesos/Bodega</button>
+                        <button type="button" class="btn btn-outline-dark" onclick="filtrarEstacion('Sanitización')">P2: Lavado/Sanitización</button>
+                        <button type="button" class="btn btn-outline-dark" onclick="filtrarEstacion('Despacho')">P1: Pase/Entrega</button>
+                        <button type="button" class="btn btn-outline-dark" onclick="filtrarEstacion('Cuarto Frío')">P1: Cuarto Frío</button>
+                        <button type="button" class="btn btn-outline-dark" onclick="filtrarEstacion('Caliente')">P1: Cuarto Caliente</button>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <input type="text" id="buscador" class="form-control" placeholder="Buscar tarea, sanitizante, temperatura..." onkeyup="renderizarTareas()">
+                </div>
+            </div>
+
+            <div id="aviso-filtro" class="alert alert-info py-2 d-none d-flex justify-content-between align-items-center">
+                <span id="texto-filtro-activo"></span>
+                <button class="btn btn-sm btn-outline-dark" onclick="filtrarEstacion('Todas')">Ver todas las zonas</button>
+            </div>
+
+            <div id="contenedor-tareas" class="row g-3"></div>
+
+            <!-- Traspaso de Turno -->
+            <div class="bg-white p-4 rounded shadow-sm mt-4 border-top border-4 border-primary">
+                <h5 class="fw-bold">Cierre Diario de Cocina y Ventanas de Pedidos</h5>
+                <p class="text-muted small mb-2">
+                    <strong>Horarios límite estándar:</strong> Panadería Industrial (Lun/Mié 15:00) • Distribuidora Cárnica (Lun-Vie 15:00) • Congelados (Lun/Mié/Vie 16:00) • Vegetales Frescos (24 hrs antes).
+                </p>
+                <textarea id="notas-turno" class="form-control mb-3" rows="2" placeholder="Ej: Mesón de entrega sanitizado. Gas cortado y puertas área sucia cerradas con llave..."></textarea>
+                <button class="btn btn-success fw-bold w-100 py-2" onclick="generarReporte()">Generar Resumen de Turno para Reporte Rápido</button>
+                <pre id="reporte-salida" class="bg-light p-3 mt-3 rounded border d-none" style="white-space: pre-wrap;"></pre>
             </div>
         </div>
-        <div class="col-md-4">
-            <input type="text" id="buscador" class="form-control" placeholder="🔍 Buscar tarea, sanitizante, temperatura..." onkeyup="renderizarTareas()">
+
+        <!-- ================= PESTAÑA 2: PLANO / CROQUIS INTERACTIVO ================= -->
+        <div class="tab-pane fade" id="vista-plano" role="tabpanel">
+            <div class="alert alert-secondary border-0 shadow-sm mb-3">
+                <strong>Croquis Operativo de 2 Pisos:</strong> Selecciona cualquier sector para visualizar la distribución puerta a puerta de Congeladores (1 al 10) y Mantenedores (4 y 5), los límites críticos de temperatura y las reglas de cierre.
+            </div>
+
+            <div class="plano-container shadow-sm">
+                <div class="d-flex justify-content-between text-muted small fw-bold mb-2 px-1 flex-wrap">
+                    <span>SEGUNDO PISO: SALA DE PROCESOS, CONGELADORES (1 AL 7), MANTENEDORES (4-5) Y BODEGA</span>
+                    <span>MONTACARGAS (M) Y BASURA (B)</span>
+                </div>
+
+                <!-- FILA SUPERIOR: SEGUNDO PISO -->
+                <div class="row g-3">
+                    <div class="col-md-7">
+                        <div class="zona-cocina zona-bodega" onclick="abrirDetalleZona('Bodega y Cámaras')">
+                            <div>
+                                <span class="badge bg-warning text-dark mb-2">PISO 2 • SALA DE PROCESOS Y BODEGA</span>
+                                <h5 class="fw-bold">Mapa Puerta a Puerta: Congeladores 1-7 y Mantenedores 4-5</h5>
+                                <p class="small text-muted mb-2">Distribución estandarizada de carnes, aves, bases congeladas, pulpas, lácteos, pastelería y panificación + Bodega Seca y Oficina.</p>
+                            </div>
+                            <div class="small fw-semibold text-warning-emphasis">Clic para ver detalle por cámara y puerta -></div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-5">
+                        <div class="zona-cocina zona-sanitizacion" onclick="abrirDetalleZona('Sanitización')">
+                            <div>
+                                <span class="badge bg-primary mb-2">PISO 2 • ZONA LAVADO Y MONTACARGAS (M)</span>
+                                <h5 class="fw-bold">Zona Lavado P2, Sanitización Vegetales y Montacargas</h5>
+                                <p class="small text-muted mb-2">Mesón de lavado junto a Sala de Procesos, contenedor de residuos (B) y conexión vertical por Montacargas (M).</p>
+                            </div>
+                            <div class="small fw-semibold text-primary">Clic para ver protocolo de lavado y bajada de canastas -></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MONTACARGAS CENTRAL -->
+                <div class="pasillo-central my-3">
+                    MONTACARGAS (M) CONECTA SALA DE PROCESOS (PISO 2) CON ZONA DESPACHO / CUARTO FRÍO (PISO 1)
+                </div>
+
+                <div class="d-flex justify-content-between text-muted small fw-bold mb-2 px-1 flex-wrap">
+                    <span>PRIMER PISO: SALÓN, VITRINAS Y ZONA DESPACHO</span>
+                    <span>CUARTO FRÍO (MESÓN 1-2 / FREEZER 7-10)</span>
+                    <span>RECEPCIÓN INSUMOS Y PATIO BASURA</span>
+                </div>
+
+                <!-- FILA INFERIOR: PRIMER PISO -->
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <div class="zona-cocina zona-despacho" onclick="abrirDetalleZona('Despacho')">
+                            <div>
+                                <span class="badge bg-dark mb-2">PISO 1 • CONEXIÓN SALÓN Y TERRAZA</span>
+                                <h5 class="fw-bold">Zona Despacho, Mesón Entrega y Vitrinas</h5>
+                                <p class="small text-muted mb-2">Regla Fin de Turno: Sanitizar mesón con solución aprobada y dejar despejado. Vitrinas (+11 °C / +22 °C).</p>
+                            </div>
+                            <div class="small fw-semibold text-dark">Clic para ver protocolo de pase y vitrinas -></div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="zona-cocina zona-frio" onclick="abrirDetalleZona('Cuarto Frío')">
+                            <div>
+                                <span class="badge bg-info text-dark mb-2">PISO 1 • LÍNEA FRÍA Y LAVAVAJILLAS</span>
+                                <h5 class="fw-bold">Cuarto Frío (Mesón 1-2 y Freezer 7-10)</h5>
+                                <p class="small text-muted mb-2">Límite crítico frío: +5 °C. Ensaladas, sándwiches, jugos, batidos, aire acondicionado y lavado de loza.</p>
+                            </div>
+                            <div class="small fw-semibold text-info-emphasis">Clic para ver control térmico y equipos -></div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="zona-cocina zona-caliente" onclick="abrirDetalleZona('Caliente')">
+                            <div>
+                                <span class="badge bg-danger mb-2">PISO 1 • COCCIÓN Y ACCESO EXTERIOR</span>
+                                <h5 class="fw-bold">Cuarto Caliente + Recepción Insumos</h5>
+                                <p class="small text-muted mb-2">Hornos (250 °C), grilladora/panini, selladora, corte general de gas y cierre de área sucia con llave.</p>
+                            </div>
+                            <div class="small fw-semibold text-danger">Clic para ver protocolo de cocción y cierre -></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PANEL DINÁMICO DE DETALLE DE ZONA -->
+            <div id="panel-detalle-zona" class="card shadow border-0 mt-4 d-none">
+                <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-3">
+                    <h5 id="titulo-zona-seleccionada" class="mb-0 fw-bold"></h5>
+                    <button class="btn btn-sm btn-warning fw-bold" id="btn-ir-tareas-zona">Ver Tareas de esta Zona -></button>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="p-3 bg-light rounded h-100 border-start border-4 border-primary">
+                                <h6 class="fw-bold text-primary">Mapa de Cámaras, Puertas y Repisas</h6>
+                                <p id="detalle-ubicaciones" class="small mb-0" style="white-space: pre-line;"></p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="p-3 bg-light rounded h-100 border-start border-4 border-secondary">
+                                <h6 class="fw-bold text-secondary">Equipos, Planillas y Control de Abastecimiento</h6>
+                                <p id="detalle-utensilios" class="small mb-0" style="white-space: pre-line;"></p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="p-3 bg-light rounded h-100 border-start border-4 border-success">
+                                <h6 class="fw-bold text-success">Protocolo Sanitización (BPM) y Temperaturas</h6>
+                                <p id="detalle-higiene" class="small mb-0" style="white-space: pre-line;"></p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="p-3 bg-light rounded h-100 border-start border-4 border-danger">
+                                <h6 class="fw-bold text-danger">Reglas Críticas de Apertura, Cierre y Seguridad</h6>
+                                <p id="detalle-seguridad" class="small mb-0" style="white-space: pre-line;"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-    </div>
 
-    <div id="contenedor-tareas" class="row g-3"></div>
-
-    <!-- Traspaso de Turno -->
-    <div class="bg-white p-4 rounded shadow-sm mt-4 border-top border-4 border-primary">
-        <h5 class="fw-bold">📋 Cierre Diario de Cocina y Control de Pedidos</h5>
-        <p class="text-muted small mb-2">
-            <strong>Ventanas de pedidos estándar:</strong> Panadería Industrial (Lun/Mié 15:00) • Distribuidora Cárnica (Lun-Vie 15:00) • Congelados (Lun/Mié/Vie 16:00) • Vegetales Frescos (24 hrs antes).
-        </p>
-        <textarea id="notas-turno" class="form-control mb-3" rows="2" placeholder="Ej: Mesón de entrega sanitizado. Gas cortado y puertas área sucia cerradas con llave..."></textarea>
-        <button class="btn btn-success fw-bold w-100 py-2" onclick="generarReporte()">📲 Generar Resumen de Turno para Reporte Rápido</button>
-        <pre id="reporte-salida" class="bg-light p-3 mt-3 rounded border d-none" style="white-space: pre-wrap;"></pre>
     </div>
 </div>
 
@@ -95,7 +288,7 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title fw-bold">➕ Agregar Nueva Tarea al Checklist</h5>
+                <h5 class="modal-title fw-bold">+ Agregar Nueva Tarea al Checklist</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -111,11 +304,11 @@
                     <div class="col-md-4">
                         <label class="form-label fw-semibold">Estación</label>
                         <select id="nt-estacion" class="form-select">
-                            <option value="Bodega y Cámaras">📦 Bodega y Cámaras</option>
-                            <option value="Sanitización">🧼 Sanitización</option>
-                            <option value="Despacho">🍰 Pase / Despacho</option>
-                            <option value="Cuarto Frío">❄️ Cuarto Frío</option>
-                            <option value="Caliente">🔥 Cuarto Caliente</option>
+                            <option value="Bodega y Cámaras">P2: Procesos/Bodega</option>
+                            <option value="Sanitización">P2: Lavado/Sanitización</option>
+                            <option value="Despacho">P1: Pase/Entrega</option>
+                            <option value="Cuarto Frío">P1: Cuarto Frío</option>
+                            <option value="Caliente">P1: Cuarto Caliente</option>
                         </select>
                     </div>
                     <div class="col-md-4">
@@ -124,19 +317,20 @@
                             <option value="Apertura">Apertura</option>
                             <option value="Producción AM">Producción AM</option>
                             <option value="Servicio Almuerzo">Servicio Almuerzo</option>
+                            <option value="Tarde / Canasta PM">Tarde / Canasta PM</option>
                             <option value="Cierre">Cierre</option>
                         </select>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label fw-semibold">Prioridad</label>
                         <select id="nt-prioridad" class="form-select">
-                            <option value="Alta">🔴 Alta (Crítico)</option>
-                            <option value="Media">🟡 Media</option>
+                            <option value="Alta">Alta (Crítico)</option>
+                            <option value="Media">Media</option>
                         </select>
                     </div>
                     <div class="col-12">
                         <label class="form-label fw-semibold">Ubicación</label>
-                        <input type="text" id="nt-ubicacion" class="form-control" placeholder="Ej: Cámara de frío #2">
+                        <input type="text" id="nt-ubicacion" class="form-control" placeholder="Ej: Cámara de frío #2 -> Montacargas (M)">
                     </div>
                     <div class="col-12">
                         <label class="form-label fw-semibold">Regla FIFO / Control</label>
@@ -150,7 +344,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-primary fw-bold" onclick="guardarNuevaTarea()">💾 Guardar Tarea</button>
+                <button type="button" class="btn btn-primary fw-bold" onclick="guardarNuevaTarea()">Guardar Tarea</button>
             </div>
         </div>
     </div>
@@ -173,46 +367,112 @@ if (sessionStorage.getItem('kitchenOpsAuth') === 'true') {
     document.getElementById('pantalla-bloqueo').style.display = 'none';
 }
 
+// BASE DE DATOS DEL CROQUIS DE 2 PISOS (SANITIZADA)
+const infoZonas = {
+    "Bodega y Cámaras": {
+        titulo: "Piso 2: Sala de Procesos, Mapa de Cámaras (1 al 7) y Bodega",
+        ubicaciones: "MAPA PUERTA POR PUERTA DE EQUIPOS (PISO 2):\n• CONGELADOR 1 (Puerta Arriba): Aves crudas, Mise en place menús, Cremas y sopas.\n• CONGELADOR 1 (Puerta Abajo): Vegetales congelados, Pulpas y frutas.\n• CONGELADOR 2: Helados base (vainilla y chocolate).\n• CONGELADOR 3 (Puertas Arriba): Fiambres laminados, Jamón serrano/prosciutto, Quesos laminados/rallados, Pollo cocido desmenuzado.\n• CONGELADOR 3 (Puertas Abajo): Cortes vacunos crudos, Cerdo y escalopas/milanesas crudas.\n• MANTENEDOR 4: Pastelería y bollería para vitrina de salón.\n• MANTENEDOR 5 (Arriba): Lácteos (leche, cremas, yogurt, quesos frescos).\n• MANTENEDOR 5 (Medio): Insumos dulces cocina (mermeladas, manjar, coberturas, pastas).\n• MANTENEDOR 5 (Abajo): Vegetales frescos seleccionados.\n• CONGELADOR 6 VERTICAL: Variedades de pan congelado, Hielo, Ricota porcionada.\n• CONGELADOR 7 (Puertas Arriba): Pescados congelados (salmón, atún), Camarones, Salmón ahumado.\n• CONGELADOR 7 (Puertas Abajo): Rellenos de lasaña, Carnes mechadas/asadas porcionadas, Cebolla caramelizada y champiñones salteados.",
+        utensilios: "• Distribución Piso 2: Sala de Proceso conectada a Zona Lavado, Basura (B) y Montacargas (M). Pasillo hacia Bodega Seca, Oficina, Comedor y Camarines.\n• Planillas: Registro de Temperaturas (Salas 01 y 02) y Control Diario de Producción.",
+        higiene: "• Registrar temperaturas dos veces al día (AM y PM). Si algún equipo supera el límite crítico: Dar Aviso inmediato a administración y trasladar producto a equipo de respaldo.\n• Al cierre: Apagar extractor, sanitizar sala de procesos y bajar automático eléctrico correspondiente.",
+        seguridad: "VENTANAS ESTÁNDAR DE ABASTECIMIENTO:\n• Aves (Pollo): Lunes y Miércoles (Recepción Martes y Jueves hasta 14:00).\n• Carnes Rojas: Lunes a Viernes hasta las 15:00 (24 hrs anticipación).\n• Panadería Industrial: Lunes y Miércoles hasta las 15:00.\n• Vegetales Congelados: Lunes, Miércoles y Viernes hasta las 16:00.\n• Cítricos, Paltas y Verduras Frescas: Pedido diario con 24 hrs de anticipación."
+    },
+    "Sanitización": {
+        titulo: "Piso 2: Zona de Lavado, Sanitización de Vegetales y Montacargas (M)",
+        ubicaciones: "• Ubicada en el sector superior izquierdo del 2do Piso, junto al mesón de apoyo, contenedor de Basura (B) y Montacargas (M).\n• Área dedicada al lavado y sanitización de vegetales frescos antes de armar las Canastas AM y PM hacia el primer piso.",
+        utensilios: "Lavaderos dobles de acero inoxidable, mesón de desconche, dosificador de sanitizante clorado, centrífuga de vegetales y canastas plásticas codificadas.",
+        higiene: "• Sanitizar vegetales sumergiendo en solución clorada dosificada, enjuagar con agua potable y centrifugar.\n• Al cierre: Sanitizar lavaderos, mesones y dejar despejada la sala de procesos.",
+        seguridad: "Verificar cierre seguro de compuertas del Montacargas (M) antes de enviar insumos hacia la línea de servicio del Piso 1."
+    },
+    "Despacho": {
+        titulo: "Piso 1: Zona de Despacho, Mesón de Entrega y Vitrinas Salón",
+        ubicaciones: "• Conexión operativa entre el área de producción (Cuarto Frío/Caliente y Montacargas) y el Salón de Ventas / Terraza.\n• Punto de salida de desayunos, cafetería, copas, sándwiches y platos principales.",
+        utensilios: "Mesón de entrega con campana térmica, impresora de comandas, loza estandarizada y pocillos de porcionado.",
+        higiene: "REGLA DE FIN DE TURNO:\nEl mesón de entrega debe quedar sanitizado con amonio cuaternario / sanitizante aprobado y completamente despejado (solo campana encima).\n• Límites térmicos vitrinas: Pastelería máx +11 °C | Chocolatería máx +22 °C.",
+        seguridad: "Verificar alergias declaradas en comanda y mantener uniformidad en selección de panes por orden."
+    },
+    "Cuarto Frío": {
+        titulo: "Piso 1: Cuarto Frío (Mesón 1-2 y Freezer 7-10) + Lavado Loza",
+        ubicaciones: "• Equipos auditados en Planilla de Temperatura Piso 1:\n  - MESÓN REFRIGERADO 1 y MESÓN 2 (Límite crítico frío: +5 °C).\n  - FREEZER 7, FREEZER 8, FREEZER 9 y FREEZER 10 (Límite crítico: -18 °C).\n• Estación de armado de ensaladas, dressings, jugos naturales, batidos y sándwiches fríos.",
+        utensilios: "Licuadoras industriales, tostadora, máquina laminadora, porcionadores calibrados, timbales y tren de lavado.",
+        higiene: "• Auditar stock interno de Cuarto Caliente (CC), Cuarto Frío (CF) y Sala de Procesos (SP).\n• Registrar temperaturas de Mesón 1-2 y Freezer 7-10 en Apertura (AM) y Cierre (PM).",
+        seguridad: "• Al cierre del turno: Apagar aire acondicionado del cuarto frío.\n• Prohibido operar la máquina laminadora sin capacitación y elemento de protección."
+    },
+    "Caliente": {
+        titulo: "Piso 1: Cuarto Caliente + Recepción de Insumos y Patio Residuos",
+        ubicaciones: "• Ubicado frente al Cuarto Frío en el 1er Piso, con acceso posterior independiente hacia Recepción de Insumos y Patio de Residuos (sin cruce de flujo limpio/sucio).\n• Cocción de desayunos calientes, sándwiches sellados/horneados, waffles (120 °C), panqueques (200 °C), lasañas (250 °C) y sopas.",
+        utensilios: "Horno convector (250 °C gratinado), Horno microondas (mantener cubierta protectora), Selladora, Grilladora/Panini, Wafflera y Panquequera.",
+        higiene: "Desengrasar hornos, planchas y panini al cierre. Retirar residuos por el acceso posterior al finalizar el servicio.",
+        seguridad: "PROTOCOLO DE CIERRE EN CUARTO CALIENTE:\n• Desenchufar equipos menores del cuarto caliente.\n• Cortar llave general de gas.\n• Apagar campana extractora.\n• Cerrar puertas de acceso al área sucia con llave."
+    }
+};
+
 const datosIniciales = [
     {
         id: 1, estacion: "Cuarto Frío", turno: "Apertura",
-        tarea: "1° Revisión de Higiene del Personal y Sanitización de Superficies",
-        cantidad: "Planilla BPM de Ingreso", prioridad: "Alta",
-        ubicacion: "Planta Baja y Planta Alta",
-        fifo: "Verificar uniforme completo, uñas cortas sin esmalte y ausencia de joyas.",
-        guiaNovato: "1. Completar registro de higiene del equipo.\n2. Aplicar solución sanitizante aprobada en todos los mesones de acero inoxidable antes de iniciar producción.",
+        tarea: "1° Revisión de Higiene del Personal y Sanitización Inicial",
+        cantidad: "Planilla Higiene Personal + Sanitización Mesones", prioridad: "Alta",
+        ubicacion: "Piso 1 y Piso 2 (Al ingreso del turno)",
+        fifo: "Marcar Cumple / No Cumple en Registro de Higiene y Salud del Personal.",
+        guiaNovato: "1. Verificar indumentaria completa: uniforme limpio, cofia, mascarilla, pechera y calzado antideslizante.\n2. Controlar uñas cortas sin esmalte, ausencia de joyas/relojes y sin heridas expuestas.\n3. Sanitizar mesones antes de manipular alimentos.",
         completado: false
     },
     {
         id: 2, estacion: "Bodega y Cámaras", turno: "Apertura",
-        tarea: "2° Control de Temperaturas AM (Cámaras de Frío y Congeladores)",
-        cantidad: "Registro Térmico Diario", prioridad: "Alta",
-        ubicacion: "Sala de Procesos y Línea Fría",
-        fifo: "Límite crítico refrigeración: +5 °C | Congelación: -18 °C.",
-        guiaNovato: "1. Registrar temperatura digital de cada equipo.\n2. Si algún equipo supera el límite crítico: Dar Aviso inmediato y trasladar producto a equipo de respaldo.",
+        tarea: "2° Registro de Temperaturas AM (Cocina P1 y Sala Procesos P2)",
+        cantidad: "Mesón 1-2, Freezer 7-10 (P1) + Congeladores 1-6 y Mantenedores 4-5 (P2)", prioridad: "Alta",
+        ubicacion: "Piso 1 (Línea Fría) y Piso 2 (Salas de Procesos 01 y 02)",
+        fifo: "Límite crítico frío: +5 °C | Congelación: -18 °C | Vitrinas: +11 °C / +22 °C.",
+        guiaNovato: "1. Anotar hora AM y temperatura del visor digital en ambas planillas.\n2. Encender y precalentar equipos del Cuarto Caliente.\n3. Si algún equipo supera el límite crítico: Dar Aviso y Cambiar Producto de cámara.",
         completado: false
     },
     {
         id: 3, estacion: "Bodega y Cámaras", turno: "Producción AM",
-        tarea: "3° Verificación de Stock, Armado de Canasta AM y Rotación FIFO",
-        cantidad: "Control de Inventario Interno", prioridad: "Alta",
-        ubicacion: "Bodega Central -> Montacargas -> Línea de Servicio",
-        fifo: "Aplicar método PEPS/FIFO: lo primero que vence sale primero a producción.",
-        guiaNovato: "1. Auditar quiebres de stock en cuarto frío y caliente.\n2. Sanitizar vegetales en zona de lavado antes de bajarlos a línea de servicio.",
+        tarea: "3° Revisar Stock (CC, CF y SP), Armar Canasta AM y Registrar Planilla",
+        cantidad: "Control Diario de Inventario y Rotación FIFO", prioridad: "Alta",
+        ubicacion: "Piso 1 (CC y CF) -> Piso 2 (SP) -> Bajada por Montacargas (M)",
+        fifo: "Registrar columnas 'INICIO CANTIDAD' y 'SALIDA AM' en Control Diario.",
+        guiaNovato: "1. Verificar stock en Cuarto Caliente (CC), Cuarto Frío (CF) y Sala de Procesos (SP).\n2. Armar listado de insumos para Canasta AM.\n3. Sanitizar verduras en Piso 2 antes de bajarlas por el montacargas.",
         completado: false
     },
     {
-        id: 4, estacion: "Caliente", turno: "Cierre",
-        tarea: "4° Cierre Técnico de Seguridad (Corte de Gas, Equipos y Temperaturas PM)",
-        cantidad: "Protocolo de Cierre en 10 Pasos", prioridad: "Alta",
-        ubicacion: "Toda la Planta",
-        fifo: "Registrar temperaturas de cierre y cuadrar inventario final del turno.",
-        guiaNovato: "1. Sanitizar mesón de entrega y dejar despejado.\n2. Desenchufar equipos menores y apagar aire acondicionado de cuarto frío.\n3. Cortar llave general de gas y apagar extractores.",
+        id: 4, estacion: "Caliente", turno: "Servicio Almuerzo",
+        tarea: "4° Producción del Día y Despacho de Servicio Almuerzo",
+        cantidad: "Sopas (450g), Lasañas (250°C), Ensaladas y Sándwiches", prioridad: "Alta",
+        ubicacion: "Piso 1: Cuarto Caliente, Cuarto Frío y Zona de Despacho",
+        fifo: "Controlar vida útil en etiquetas: Cremas (2 días), Lactonesa/Waffles (3 días), Pesto/Tomate frito (4 días).",
+        guiaNovato: "1. Verificar rótulos FIFO antes de abrir contenedores.\n2. Mantener cadena de frío en línea durante el servicio punta.",
+        completado: false
+    },
+    {
+        id: 5, estacion: "Bodega y Cámaras", turno: "Tarde / Canasta PM",
+        tarea: "5° Armado de Canasta PM y Sugerido de Pedidos a Proveedores",
+        cantidad: "Reposición tarde + Pedidos antes de 15:00 / 16:00 hrs", prioridad: "Alta",
+        ubicacion: "Piso 2 -> Montacargas (M) -> Piso 1",
+        fifo: "Respetar ventanas horarias de corte de proveedores (15:00 hrs cárnicos y panadería; 16:00 hrs congelados).",
+        guiaNovato: "1. Armar Canasta PM y registrar en columna 'SALIDA PM'.\n2. Enviar sugerido de compras según stock mínimo.",
+        completado: false
+    },
+    {
+        id: 6, estacion: "Despacho", turno: "Cierre",
+        tarea: "6° Limpieza Profunda, Sanitización Mesón Entrega y Lavado de Loza",
+        cantidad: "Protocolo de Sanitización de Cierre", prioridad: "Alta",
+        ubicacion: "Piso 1 (Hornos, Panini, Lavavajillas, Mesón Entrega) y Piso 2 (Sala Procesos)",
+        fifo: "Regla estricta: El mesón de entrega debe quedar sanitizado y despejado.",
+        guiaNovato: "1. Limpiar hornos, grilladora/panini y mesones.\n2. Lavar toda la loza y sanitizar lavavajillas.\n3. Limpiar sala de procesos (Piso 2) y retirar basura al patio exterior.",
+        completado: false
+    },
+    {
+        id: 7, estacion: "Caliente", turno: "Cierre",
+        tarea: "7° Cierre Técnico (Cortar Gas, Apagar A/C, Automáticos, T° PM y Llave)",
+        cantidad: "Checklist Final de Seguridad", prioridad: "Alta",
+        ubicacion: "Piso 1 y Piso 2 (Revisión final antes de retirarse)",
+        fifo: "Cuadrar columna 'TOTAL FINAL' de inventario diario.",
+        guiaNovato: "1. Desenchufar artefactos cuarto caliente.\n2. Apagar aire acondicionado cuarto frío.\n3. CORTAR GAS.\n4. Apagar extractor y bajar automático en sala de procesos.\n5. Registrar temperaturas PM e inventario final.\n6. Cerrar puertas de acceso al área sucia con llave.",
         completado: false
     }
 ];
 
-let tareas = JSON.parse(localStorage.getItem('kitchenOps_tareas_v1')) || datosIniciales;
+let tareas = JSON.parse(localStorage.getItem('kitchenOps_tareas_v2')) || datosIniciales;
 let filtroActual = 'Todas';
 
 document.getElementById('responsable-traza').value = localStorage.getItem('kitchenOps_resp') || 'Encargado Demo';
@@ -220,10 +480,42 @@ function guardarResponsableTraza() {
     localStorage.setItem('kitchenOps_resp', document.getElementById('responsable-traza').value);
 }
 
+// FUNCIONES DEL PLANO INTERACTIVO
+function abrirDetalleZona(nombreZona) {
+    const data = infoZonas[nombreZona];
+    if (!data) return;
+
+    document.getElementById('titulo-zona-seleccionada').innerText = data.titulo;
+    document.getElementById('detalle-ubicaciones').innerText = data.ubicaciones;
+    document.getElementById('detalle-utensilios').innerText = data.utensilios;
+    document.getElementById('detalle-higiene').innerText = data.higiene;
+    document.getElementById('detalle-seguridad').innerText = data.seguridad;
+
+    const btnIr = document.getElementById('btn-ir-tareas-zona');
+    btnIr.onclick = function() {
+        filtrarEstacion(nombreZona);
+        const tabChecklist = new bootstrap.Tab(document.getElementById('tab-checklist-btn'));
+        tabChecklist.show();
+    };
+
+    const panel = document.getElementById('panel-detalle-zona');
+    panel.classList.remove('d-none');
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// FUNCIONES DEL CHECKLIST
 function renderizarTareas() {
     const contenedor = document.getElementById('contenedor-tareas');
     const busqueda = document.getElementById('buscador').value.toLowerCase();
+    const avisoFiltro = document.getElementById('aviso-filtro');
     contenedor.innerHTML = '';
+
+    if (filtroActual !== 'Todas') {
+        avisoFiltro.classList.remove('d-none');
+        document.getElementById('texto-filtro-activo').innerHTML = `Mostrando únicamente tareas de la estación: <strong>${filtroActual}</strong>`;
+    } else {
+        avisoFiltro.classList.add('d-none');
+    }
 
     const filtradas = tareas.filter(t => {
         const okEst = (filtroActual === 'Todas' || t.estacion === filtroActual);
@@ -243,17 +535,17 @@ function renderizarTareas() {
                         <div class="w-100">
                             <div class="d-flex justify-content-between flex-wrap">
                                 <div>
-                                    <span class="badge bg-dark badge-estacion me-1">📍 ${t.estacion}</span>
-                                    <span class="badge bg-secondary badge-estacion me-1">🕒 ${t.turno}</span>
+                                    <span class="badge bg-dark badge-estacion me-1">${t.estacion}</span>
+                                    <span class="badge bg-secondary badge-estacion me-1">${t.turno}</span>
                                     <span class="badge ${t.prioridad === 'Alta' ? 'bg-danger' : 'bg-warning text-dark'} badge-estacion">Prioridad ${t.prioridad}</span>
                                 </div>
-                                <button class="btn btn-sm text-danger p-0" onclick="eliminarTarea(${t.id})">🗑️</button>
+                                <button class="btn btn-sm text-danger p-0" onclick="eliminarTarea(${t.id})" title="Eliminar">X</button>
                             </div>
                             <h5 class="card-title fw-bold mt-2 mb-1 ${tachado}">${t.tarea}</h5>
-                            <p class="mb-1 fw-semibold text-primary">📦 Alcance: ${t.cantidad}</p>
-                            <p class="mb-1 small"><strong>🗺️ Ubicación:</strong> ${t.ubicacion}</p>
-                            <p class="mb-2 small text-danger"><strong>🏷️ Control Crítico:</strong> ${t.fifo}</p>
-                            <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#guia-${t.id}">📖 Ver protocolo</button>
+                            <p class="mb-1 fw-semibold text-primary">Alcance: ${t.cantidad}</p>
+                            <p class="mb-1 small"><strong>Ubicación:</strong> ${t.ubicacion}</p>
+                            <p class="mb-2 small text-danger"><strong>Control Crítico:</strong> ${t.fifo}</p>
+                            <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#guia-${t.id}">Ver protocolo paso a paso</button>
                             <div class="collapse mt-2" id="guia-${t.id}">
                                 <div class="card card-body bg-light border-0 small" style="white-space: pre-line;">${t.guiaNovato}</div>
                             </div>
@@ -281,7 +573,7 @@ function guardarNuevaTarea() {
         guiaNovato: document.getElementById('nt-guia').value || "Seguir procedimiento operativo.",
         completado: false
     });
-    localStorage.setItem('kitchenOps_tareas_v1', JSON.stringify(tareas));
+    localStorage.setItem('kitchenOps_tareas_v2', JSON.stringify(tareas));
     renderizarTareas();
     bootstrap.Modal.getInstance(document.getElementById('modalNuevaTarea')).hide();
 }
@@ -289,14 +581,14 @@ function guardarNuevaTarea() {
 function eliminarTarea(id) {
     if (confirm("¿Eliminar esta tarea?")) {
         tareas = tareas.filter(t => t.id !== id);
-        localStorage.setItem('kitchenOps_tareas_v1', JSON.stringify(tareas));
+        localStorage.setItem('kitchenOps_tareas_v2', JSON.stringify(tareas));
         renderizarTareas();
     }
 }
 
 function cambiarEstado(id) {
     tareas = tareas.map(t => t.id === id ? { ...t, completado: !t.completado } : t);
-    localStorage.setItem('kitchenOps_tareas_v1', JSON.stringify(tareas));
+    localStorage.setItem('kitchenOps_tareas_v2', JSON.stringify(tareas));
     renderizarTareas();
 }
 
@@ -313,7 +605,7 @@ function actualizarProgreso() {
 function reiniciarTurno() {
     if (confirm("¿Reiniciar checks para un nuevo turno?")) {
         tareas = tareas.map(t => ({ ...t, completado: false }));
-        localStorage.setItem('kitchenOps_tareas_v1', JSON.stringify(tareas));
+        localStorage.setItem('kitchenOps_tareas_v2', JSON.stringify(tareas));
         document.getElementById('notas-turno').value = '';
         document.getElementById('reporte-salida').classList.add('d-none');
         renderizarTareas();
@@ -327,13 +619,13 @@ function generarReporte() {
     const fecha = new Date().toLocaleDateString('es-CL');
     const resp = document.getElementById('responsable-traza').value || 'Encargado';
 
-    let texto = `✅ *REPORTE OPERATIVO DE TURNO (${fecha})*\n`;
-    texto += `👤 *Responsable:* ${resp}\n`;
-    texto += `📊 *Avance Protocolo:* ${listas.length} de ${tareas.length} etapas completadas.\n\n`;
+    let texto = `REPORTE OPERATIVO DE TURNO (${fecha})\n`;
+    texto += `Responsable: ${resp}\n`;
+    texto += `Avance Protocolo: ${listas.length} de ${tareas.length} etapas completadas.\n\n`;
     if (pendientes.length > 0) {
-        texto += `⚠️ *PENDIENTES:*\n` + pendientes.map(p => `- [${p.estacion}] ${p.tarea}`).join('\n') + `\n\n`;
+        texto += `ETAPAS PENDIENTES:\n` + pendientes.map(p => `- [${p.estacion}] ${p.tarea}`).join('\n') + `\n\n`;
     }
-    texto += `📝 *NOVEDADES / PEDIDOS:*\n${notas}`;
+    texto += `NOVEDADES / PEDIDOS:\n${notas}`;
 
     const caja = document.getElementById('reporte-salida');
     caja.innerText = texto;
