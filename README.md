@@ -15,8 +15,8 @@ Desarrollé este sistema como una herramienta ligera que cualquier integrante de
 
 - [x] **v1.0 - Protocolo operativo y checklist:** Tareas separadas por estación (Cuarto Frío, Caliente, Bodega, Sanitización y Despacho), barra de avance del turno y generación de resumen de cierre.
 - [x] **v1.1 - Mapa de planta y control de cámaras:** Esquema interactivo de áreas de producción y almacenamiento con límites críticos de temperatura por equipo.
-- [ ] **v1.2 - Contador de trazabilidad y exportación CSV:** Registro rápido de salidas por preparación, sincronización con planillas físicas y descarga en formato CSV para análisis en Excel.
-- [ ] **v1.3 - Fichas técnicas y gramajes:** Consulta rápida de recetas estandarizadas, rendimientos y alérgenos.
+- [x] **v1.2 - Contador de trazabilidad y exportación CSV:** Registro rápido de salidas por preparación, sincronización con planillas físicas y descarga en formato CSV para análisis en Excel.
+- [x] **v1.3 - Fichas técnicas y gramajes:** Consulta rápida de recetas estandarizadas, rendimientos y alérgenos.
 
 ## Tecnologías utilizadas
 
