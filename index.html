@@ -56,6 +56,40 @@
             font-size: 0.85rem;
         }
 
+        /* Estilos Fichas Técnicas */
+        .card-ficha {
+            border-top: 4px solid #6f42c1;
+            transition: transform 0.2s ease;
+        }
+        .card-ficha:hover { transform: translateY(-3px); }
+        .box-salon { background-color: #fff3cd; border-left: 4px solid #ffc107; }
+
+        /* Estilos Contador de Trazabilidad */
+        .card-traza {
+            border-left: 5px solid #adb5bd;
+            transition: all 0.15s ease;
+        }
+        .card-traza.con-ventas {
+            border-left-color: #198754;
+            background-color: #f0fdf4;
+        }
+        .btn-contador {
+            width: 48px;
+            height: 44px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+        }
+        .num-contador {
+            font-size: 1.35rem;
+            font-weight: 800;
+            min-width: 44px;
+            text-align: center;
+        }
+
         /* Pantalla de Bloqueo Demo */
         #pantalla-bloqueo {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -84,11 +118,12 @@
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
             <div>
                 <h2 class="fw-bold mb-1">KitchenOps Hub • Gestión Operativa</h2>
-                <p class="text-muted mb-0">v1.1 • Protocolos BPM/HACCP y Croquis Interactivo de Cámaras</p>
+                <p class="text-muted mb-0">v1.3 • Protocolos BPM/HACCP, Croquis de Cámaras, Recetario y Trazabilidad CSV</p>
             </div>
             <div class="d-flex gap-2 flex-wrap align-items-center">
                 <input type="text" id="responsable-traza" class="form-control form-control-sm" style="width: 180px;" placeholder="Encargado de turno" onchange="guardarResponsableTraza()">
                 <button class="btn btn-primary btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#modalNuevaTarea">+ Nueva Tarea</button>
+                <button class="btn btn-dark btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#modalNuevaFicha">+ Nueva Ficha</button>
                 <button class="btn btn-outline-secondary btn-sm" onclick="reiniciarTurno()">Reiniciar Turno</button>
             </div>
         </div>
@@ -103,7 +138,7 @@
             </div>
         </div>
 
-        <!-- PESTAÑAS DE NAVEGACIÓN -->
+        <!-- PESTAÑAS DE NAVEGACIÓN PRINCIPAL -->
         <ul class="nav nav-pills nav-fill mt-4 pt-3 border-top gap-2" id="pills-tab" role="tablist">
             <li class="nav-item" role="presentation">
                 <button class="nav-link active fw-bold py-2" id="tab-checklist-btn" data-bs-toggle="pill" data-bs-target="#vista-checklist" type="button" role="tab">
@@ -113,6 +148,16 @@
             <li class="nav-item" role="presentation">
                 <button class="nav-link fw-bold py-2" id="tab-plano-btn" data-bs-toggle="pill" data-bs-target="#vista-plano" type="button" role="tab">
                     2. Croquis 2 Pisos y Cámaras
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-bold py-2" id="tab-fichas-btn" data-bs-toggle="pill" data-bs-target="#vista-fichas" type="button" role="tab">
+                    3. Fichas Técnicas y Salón
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-bold py-2 bg-success-subtle text-success-emphasis border border-success" id="tab-traza-btn" data-bs-toggle="pill" data-bs-target="#vista-traza" type="button" role="tab">
+                    4. Trazabilidad Comandas (<span id="badge-total-traza">0</span>)
                 </button>
             </li>
         </ul>
@@ -153,7 +198,7 @@
                     <strong>Horarios límite estándar:</strong> Panadería Industrial (Lun/Mié 15:00) • Distribuidora Cárnica (Lun-Vie 15:00) • Congelados (Lun/Mié/Vie 16:00) • Vegetales Frescos (24 hrs antes).
                 </p>
                 <textarea id="notas-turno" class="form-control mb-3" rows="2" placeholder="Ej: Mesón de entrega sanitizado. Gas cortado y puertas área sucia cerradas con llave..."></textarea>
-                <button class="btn btn-success fw-bold w-100 py-2" onclick="generarReporte()">Generar Resumen de Turno para Reporte Rápido</button>
+                <button class="btn btn-success fw-bold w-100 py-2" onclick="generarReporte()">Generar Resumen Completo (Protocolo + Trazabilidad)</button>
                 <pre id="reporte-salida" class="bg-light p-3 mt-3 rounded border d-none" style="white-space: pre-wrap;"></pre>
             </div>
         </div>
@@ -280,10 +325,90 @@
             </div>
         </div>
 
+        <!-- ================= PESTAÑA 3: FICHAS TÉCNICAS Y SALÓN ================= -->
+        <div class="tab-pane fade" id="vista-fichas" role="tabpanel">
+            <div class="row g-2 mb-3 align-items-center">
+                <div class="col-md-8">
+                    <div class="d-flex gap-1 flex-wrap">
+                        <button class="btn btn-dark btn-sm" onclick="filtrarCatFicha('Todas')">Todas las Recetas</button>
+                        <button class="btn btn-outline-dark btn-sm" onclick="filtrarCatFicha('Sándwiches')">Sándwiches y Sellados</button>
+                        <button class="btn btn-outline-dark btn-sm" onclick="filtrarCatFicha('Ensaladas y Dressings')">Ensaladas y Dressings</button>
+                        <button class="btn btn-outline-dark btn-sm" onclick="filtrarCatFicha('Pastelería y Copas')">Waffles, Panqueques y Copas</button>
+                        <button class="btn btn-outline-dark btn-sm" onclick="filtrarCatFicha('Desayunos y Jugos')">Desayunos y Jugos</button>
+                        <button class="btn btn-outline-dark btn-sm" onclick="filtrarCatFicha('Sopas y Fondos')">Sopas, Lasañas y Bases</button>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <input type="text" id="buscador-fichas" class="form-control" placeholder="Buscar receta, gramaje, alérgeno..." onkeyup="renderizarFichas()">
+                </div>
+            </div>
+
+            <div id="contenedor-fichas" class="row g-4"></div>
+        </div>
+
+        <!-- ================= PESTAÑA 4: CONTADOR DE TRAZABILIDAD INTELIGENTE ================= -->
+        <div class="tab-pane fade" id="vista-traza" role="tabpanel">
+            <div class="bg-white p-3 rounded shadow-sm mb-3 border-start border-5 border-success">
+                <div class="row g-2 align-items-center">
+                    <div class="col-md-3">
+                        <h5 class="fw-bold mb-0">Trazabilidad Comandas</h5>
+                        <small class="text-muted">Control de salidas y exportación de datos</small>
+                    </div>
+                    <div class="col-md-3">
+                        <select id="orden-traza" class="form-select form-select-sm fw-semibold" onchange="renderizarTrazabilidad()">
+                            <option value="carta">Orden de Carta (Categorías)</option>
+                            <option value="recientes">Últimos modificados arriba</option>
+                            <option value="antiguos">Primeros vendidos del turno arriba</option>
+                            <option value="pendientes">Primero pendientes de anotar</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 d-flex gap-2 justify-content-md-end flex-wrap">
+                        <button type="button" id="btn-solo-vendidos" class="btn btn-outline-success btn-sm fw-bold" onclick="toggleSoloVendidos()">
+                            Solo Vendidos (> 0)
+                        </button>
+                        <button type="button" class="btn btn-primary btn-sm fw-bold" onclick="marcarTodoEnHoja()" title="Marca todo lo actual como ya registrado en planilla">
+                            Marcar todo como Anotado
+                        </button>
+                        <button type="button" class="btn btn-success btn-sm fw-bold" onclick="exportarTrazabilidadTexto()">
+                            Copiar Tabla
+                        </button>
+                        <button type="button" class="btn btn-dark btn-sm fw-bold" onclick="exportarTrazabilidadCSV()">
+                            Excel (.CSV)
+                        </button>
+                        <button type="button" class="btn btn-outline-danger btn-sm" onclick="reiniciarTrazabilidad()">
+                            Reset 0
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filtros por Categoría + Buscador Rápido -->
+            <div class="row g-2 mb-3">
+                <div class="col-md-8">
+                    <div class="d-flex gap-1 flex-wrap" id="botones-cat-traza">
+                        <button class="btn btn-dark btn-sm" onclick="filtrarCatTraza('Todas')">Todas</button>
+                        <button class="btn btn-outline-dark btn-sm" onclick="filtrarCatTraza('DESAYUNOS')">Desayunos</button>
+                        <button class="btn btn-outline-dark btn-sm" onclick="filtrarCatTraza('JUGOS NATURALES')">Jugos y Limonadas</button>
+                        <button class="btn btn-outline-dark btn-sm" onclick="filtrarCatTraza('PASTELERÍA Y COPAS')">Waffles y Copas</button>
+                        <button class="btn btn-outline-dark btn-sm" onclick="filtrarCatTraza('SANDWICHES')">Sándwiches</button>
+                        <button class="btn btn-outline-dark btn-sm" onclick="filtrarCatTraza('MENÚ Y LASAÑAS')">Menú y Lasañas</button>
+                        <button class="btn btn-outline-dark btn-sm" onclick="filtrarCatTraza('SOPAS')">Sopas y Cremas</button>
+                        <button class="btn btn-outline-dark btn-sm" onclick="filtrarCatTraza('ENSALADAS Y DRESSINGS')">Ensaladas</button>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <input type="text" id="buscador-traza" class="form-control" placeholder="Filtrar plato o formato..." onkeyup="renderizarTrazabilidad()">
+                </div>
+            </div>
+
+            <pre id="caja-export-traza" class="bg-white p-3 rounded border shadow-sm mb-3 d-none small" style="white-space: pre-wrap;"></pre>
+            <div id="contenedor-traza" class="row g-2"></div>
+        </div>
+
     </div>
 </div>
 
-<!-- MODAL NUEVA TAREA -->
+<!-- MODAL: AGREGAR NUEVA TAREA -->
 <div class="modal fade" id="modalNuevaTarea" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -350,6 +475,60 @@
     </div>
 </div>
 
+<!-- MODAL: AGREGAR NUEVA FICHA TÉCNICA -->
+<div class="modal fade" id="modalNuevaFicha" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title fw-bold">+ Crear Nueva Ficha Técnica / Receta</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Nombre del Producto</label>
+                        <input type="text" id="nf-nombre" class="form-control" placeholder="Ej: Sándwich Caprese / Crema de Zapallo">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">Categoría</label>
+                        <select id="nf-categoria" class="form-select">
+                            <option value="Sándwiches">Sándwiches y Sellados</option>
+                            <option value="Ensaladas y Dressings">Ensaladas y Dressings</option>
+                            <option value="Pastelería y Copas">Waffles, Panqueques y Copas</option>
+                            <option value="Desayunos y Jugos">Desayunos y Jugos</option>
+                            <option value="Sopas y Fondos">Sopas, Lasañas y Bases</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">Duración / Tiempo</label>
+                        <input type="text" id="nf-tiempo" class="form-control" placeholder="Ej: Vida útil 3 días">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Loza / Vaso / Pan Estándar</label>
+                        <input type="text" id="nf-loza" class="form-control" placeholder="Ej: Plato redondo / Pan Ciabatta">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Ingredientes y Gramajes</label>
+                        <textarea id="nf-ingredientes" class="form-control" rows="3" placeholder="• Ingrediente 1: 100 g&#10;• Ingrediente 2: 50 mL"></textarea>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Procedimiento Paso a Paso</label>
+                        <textarea id="nf-montaje" class="form-control" rows="2"></textarea>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold text-warning-emphasis">Nota para Salón / Alérgenos / FIFO</label>
+                        <input type="text" id="nf-salon" class="form-control" placeholder="Ej: Contiene gluten y lácteos. Rotular por 3 días.">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-dark fw-bold" onclick="guardarNuevaFicha()">Guardar Ficha Técnica</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 const PIN_DEMO = "1234";
@@ -367,7 +546,7 @@ if (sessionStorage.getItem('kitchenOpsAuth') === 'true') {
     document.getElementById('pantalla-bloqueo').style.display = 'none';
 }
 
-// BASE DE DATOS DEL CROQUIS DE 2 PISOS (SANITIZADA)
+// 1. BASE DE DATOS DEL CROQUIS DE 2 PISOS
 const infoZonas = {
     "Bodega y Cámaras": {
         titulo: "Piso 2: Sala de Procesos, Mapa de Cámaras (1 al 7) y Bodega",
@@ -406,6 +585,7 @@ const infoZonas = {
     }
 };
 
+// 2. CHECKLIST OPERATIVO
 const datosIniciales = [
     {
         id: 1, estacion: "Cuarto Frío", turno: "Apertura",
@@ -439,8 +619,8 @@ const datosIniciales = [
         tarea: "4° Producción del Día y Despacho de Servicio Almuerzo",
         cantidad: "Sopas (450g), Lasañas (250°C), Ensaladas y Sándwiches", prioridad: "Alta",
         ubicacion: "Piso 1: Cuarto Caliente, Cuarto Frío y Zona de Despacho",
-        fifo: "Controlar vida útil en etiquetas: Cremas (2 días), Lactonesa/Waffles (3 días), Pesto/Tomate frito (4 días).",
-        guiaNovato: "1. Verificar rótulos FIFO antes de abrir contenedores.\n2. Mantener cadena de frío en línea durante el servicio punta.",
+        fifo: "Controlar vida útil en etiquetas: Cremas (2 días), Lactonesa/Waffles (3 días), Pesto/Tomate frito (4 días). Registrar salidas en Pestaña 4.",
+        guiaNovato: "1. Verificar rótulos FIFO antes de abrir contenedores.\n2. Mantener cadena de frío en línea durante el servicio punta.\n3. Registrar cada salida de plato en el contador de trazabilidad.",
         completado: false
     },
     {
@@ -466,14 +646,112 @@ const datosIniciales = [
         tarea: "7° Cierre Técnico (Cortar Gas, Apagar A/C, Automáticos, T° PM y Llave)",
         cantidad: "Checklist Final de Seguridad", prioridad: "Alta",
         ubicacion: "Piso 1 y Piso 2 (Revisión final antes de retirarse)",
-        fifo: "Cuadrar columna 'TOTAL FINAL' de inventario diario.",
+        fifo: "Cuadrar columna 'TOTAL FINAL' de inventario y exportar CSV de Trazabilidad.",
         guiaNovato: "1. Desenchufar artefactos cuarto caliente.\n2. Apagar aire acondicionado cuarto frío.\n3. CORTAR GAS.\n4. Apagar extractor y bajar automático en sala de procesos.\n5. Registrar temperaturas PM e inventario final.\n6. Cerrar puertas de acceso al área sucia con llave.",
         completado: false
     }
 ];
 
-let tareas = JSON.parse(localStorage.getItem('kitchenOps_tareas_v2')) || datosIniciales;
+// 3. FICHAS TÉCNICAS ESTANDARIZADAS (DEMO GASTRONÓMICA)
+const fichasIniciales = [
+    {
+        id: 201,
+        nombre: "Sándwich Caprese en Pan Ciabatta",
+        categoria: "Sándwiches",
+        tiempo: "Horno / Selladora (4 min)",
+        loza: "Pan Ciabatta (1 unid) • Plato redondo",
+        ingredientes: "• Pan Ciabatta artesanal: 1 unid (110 g)\n• Jamón Serrano / Prosciutto: 60 g\n• Queso Brie laminado: 60 g\n• Tomate confitado / asado: 90 g\n• Pesto de albahaca y frutos secos: 20 g\n• Hojas de albahaca fresca y aceite de oliva: 10 mL",
+        montaje: "1. Sellar base y tapa del pan con aceite de oliva.\n2. Disponer jamón, tomate y queso Brie en la base y llevar al horno hasta fundir.\n3. Retirar, incorporar albahaca fresca sobre el queso y untar pesto en la tapa.",
+        salon: "Alérgenos: Gluten (trigo), lácteos y frutos secos (almendras/nueces en pesto). Vida útil pesto refrigerado: 4 días."
+    },
+    {
+        id: 202,
+        nombre: "Ensalada César Pollo (Chica / Grande)",
+        categoria: "Ensaladas y Dressings",
+        tiempo: "Cuarto Frío (3 min)",
+        loza: "Bowl Ensalada Chica o Grande",
+        ingredientes: "• Lechuga costina trozada a mano: 70 g (Chica) | 120 g (Grande)\n• Pechuga de pollo grillada en cubos: 70 g | 100 g\n• Tomate cherry en mitades: 3 unid | 6 unid\n• Aceitunas negras descorazonadas: 6 unid | 12 unid\n• Queso parmesano rallado: 20 g | 30 g\n• Crutones tostados: 7 unid | 14 unid",
+        montaje: "1. Formar cama de lechuga fresca.\n2. Intercalar mitades de tomate cherry y aceitunas por el borde.\n3. Ubicar pollo tibio/frío al centro, espolvorear parmesano y distribuir crutones.",
+        salon: "Entregar dressing seleccionado en pocillo aparte (Palta-Menta, Albahaca-Nuez, Light, Ricota o Mango)."
+    },
+    {
+        id: 203,
+        nombre: "Lasaña Boloñesa Gratinada",
+        categoria: "Sopas y Fondos",
+        tiempo: "Horno 250 °C (12-15 min)",
+        loza: "Plato redondo refractario",
+        ingredientes: "• Láminas de pasta fresca (10x23 cm): 2 unid\n• Pino boloñesa estandarizado: 250 mL\n• Salsa Bechamel base: 110 g\n• Queso mantecoso laminado: 30 g\n• Queso parmesano para gratinar: 15 g\n• Decoración: 1 tomate cherry + 2 hojas albahaca",
+        montaje: "1. Disponer láminas de pasta en cruz unidas con bechamel.\n2. Rellenar con pino, queso mantecoso y cerrar estuche.\n3. Cubrir con bechamel, parmesano y gratinar a 250 °C por 12-15 minutos.",
+        salon: "Alérgenos: Gluten, huevo y lácteos. Verificar temperatura interna sobre 75 °C antes de despachar."
+    },
+    {
+        id: 204,
+        nombre: "Crema de Zapallo Asado (Porción 450 g)",
+        categoria: "Sopas y Fondos",
+        tiempo: "Cocción / Tamizado • Vida útil: 2 días",
+        loza: "Tazón de Sopa (450 g)",
+        ingredientes: "• Zapallo camote en cubos: 1.500 g\n• Papa pelada: 400 g\n• Cebolla pluma: 140 g | Puerro: 100 g | Apio: 50 g\n• Pasta de ajo: 2 g | Sal: 5 g\n• Agua / Fondo de vegetales: 5 L",
+        montaje: "1. Sudar mirepoix (cebolla, puerro, apio) sin dorar.\n2. Incorporar zapallo, papa y líquido; cocinar hasta ablandar.\n3. Procesar, pasar obligatoriamente por tamiz fino y porcionar en contenedores de 450 g.",
+        salon: "Decorar al pase con ciboulette picado fino. Mantener rotulación FIFO estricta de 48 horas refrigerado."
+    },
+    {
+        id: 205,
+        nombre: "Waffle Clásico con Helado y Frutos",
+        categoria: "Pastelería y Copas",
+        tiempo: "Wafflera 120 °C (5 min)",
+        loza: "Plato redondo + Pocillos de salsa",
+        ingredientes: "• Waffle masa base: 1 unid (cortado en cuartos)\n• Helado de vainilla: 50 g (1 bola calibrada)\n• Compota de frutos rojos: 25 g\n• Cobertura de chocolate: 25 g\n• Crema chantilly: 30 g | Azúcar flor: 5 g",
+        montaje: "1. Regenerar waffle en horno para recuperar crocancia.\n2. Espolvorear azúcar flor, disponer salsas en pocillos individuales y coronar con helado y chantilly.",
+        salon: "Despachar inmediatamente tras montar el helado para evitar pérdida de temperatura."
+    },
+    {
+        id: 206,
+        nombre: "Desayuno Completo de la Casa",
+        categoria: "Desayunos y Jugos",
+        tiempo: "Servicio Mañana / Tarde (6 min)",
+        loza: "Plato redondo + Pocillos cerámica",
+        ingredientes: "• Omelette de 3 huevos (2 agregados a elección: queso, tomate, champiñón o jamón)\n• Tostadas de pan artesanal: 2 unid\n• Jugo natural de naranja recién exprimido: 200 mL\n• Infusión o café filtrado: 1 taza",
+        montaje: "1. Cuajar omelette jugoso sin dorar en exceso, terminar con ciboulette picado.\n2. Montar junto a tostadas tibias y vaso de jugo calibrado de 200 mL.",
+        salon: "Confirmar en comanda los 2 ingredientes del omelette y preferencia de pan (blanco o integral, sin mezclar)."
+    }
+];
+
+// 4. BASE DE DATOS DE TRAZABILIDAD DE COMANDAS
+const baseTrazabilidad = [
+    { id: 1, cat: "DESAYUNOS", prep: "Desayuno de la Casa", formato: "Omelette 2 agregados + Jugo 200ml", cant: 0 },
+    { id: 2, cat: "DESAYUNOS", prep: "Desayuno Saludable", formato: "Yogurt + Müsli + Fruta + Tostadas", cant: 0 },
+    { id: 3, cat: "DESAYUNOS", prep: "Tostadas Palta / Huevo", formato: "Porción 2 unidades", cant: 0 },
+    { id: 4, cat: "JUGOS NATURALES", prep: "Jugo Natural Frambuesa", formato: "Vaso Grande 300 ml", cant: 0 },
+    { id: 5, cat: "JUGOS NATURALES", prep: "Jugo Natural Frambuesa", formato: "Vaso Pequeño 200 ml", cant: 0 },
+    { id: 6, cat: "JUGOS NATURALES", prep: "Jugo Natural Maracuyá", formato: "Vaso Grande 300 ml", cant: 0 },
+    { id: 7, cat: "JUGOS NATURALES", prep: "Limonada Menta Jengibre", formato: "Vaso 300 ml", cant: 0 },
+    { id: 8, cat: "PASTELERÍA Y COPAS", prep: "Waffle con Helado y Frutos", formato: "Individual", cant: 0 },
+    { id: 9, cat: "PASTELERÍA Y COPAS", prep: "Panqueque Avellana / Manjar", formato: "Individual", cant: 0 },
+    { id: 10, cat: "PASTELERÍA Y COPAS", prep: "Copa Helado Selva Negra", formato: "Copa Tulipa", cant: 0 },
+    { id: 11, cat: "SANDWICHES", prep: "Sándwich Caprese", formato: "Pan Ciabatta", cant: 0 },
+    { id: 12, cat: "SANDWICHES", prep: "Sándwich Roast Beef Palta", formato: "Pan Baguettini / Molde", cant: 0 },
+    { id: 13, cat: "SANDWICHES", prep: "Sándwich Pollo Rúcula", formato: "Pan Baguettini / Molde", cant: 0 },
+    { id: 14, cat: "SANDWICHES", prep: "Sellado Ave Palta", formato: "Pan Molde Grande", cant: 0 },
+    { id: 15, cat: "SANDWICHES", prep: "Sellado Jamón Queso", formato: "Pan Molde Grande", cant: 0 },
+    { id: 16, cat: "MENÚ Y LASAÑAS", prep: "Menú Ejecutivo del Día", formato: "Entrada + Fondo + Jugo", cant: 0 },
+    { id: 17, cat: "MENÚ Y LASAÑAS", prep: "Lasaña Boloñesa", formato: "Individual (Horno 250°C)", cant: 0 },
+    { id: 18, cat: "MENÚ Y LASAÑAS", prep: "Lasaña Vegetariana", formato: "Individual (Horno 250°C)", cant: 0 },
+    { id: 19, cat: "SOPAS", prep: "Crema de Zapallo", formato: "Porción 450 g", cant: 0 },
+    { id: 20, cat: "SOPAS", prep: "Crema de Champiñones", formato: "Porción 450 g", cant: 0 },
+    { id: 21, cat: "SOPAS", prep: "Consomé de Ave", formato: "Porción 450 g", cant: 0 },
+    { id: 22, cat: "ENSALADAS Y DRESSINGS", prep: "Ensalada César Pollo", formato: "Grande", cant: 0 },
+    { id: 23, cat: "ENSALADAS Y DRESSINGS", prep: "Ensalada César Pollo", formato: "Chica", cant: 0 },
+    { id: 24, cat: "ENSALADAS Y DRESSINGS", prep: "Ensalada César Salmón", formato: "Grande / Chica", cant: 0 },
+    { id: 25, cat: "ENSALADAS Y DRESSINGS", prep: "Ensalada Quinoa y Almendras", formato: "Único", cant: 0 }
+];
+
+let tareas = JSON.parse(localStorage.getItem('kitchenOps_tareas_v3')) || datosIniciales;
+let fichas = JSON.parse(localStorage.getItem('kitchenOps_fichas_v3')) || fichasIniciales;
+let traza = JSON.parse(localStorage.getItem('kitchenOps_traza_v3')) || baseTrazabilidad;
 let filtroActual = 'Todas';
+let filtroCatFicha = 'Todas';
+let filtroCatTraza = 'Todas';
+let mostrarSoloVendidos = false;
 
 document.getElementById('responsable-traza').value = localStorage.getItem('kitchenOps_resp') || 'Encargado Demo';
 function guardarResponsableTraza() {
@@ -558,6 +836,264 @@ function renderizarTareas() {
     actualizarProgreso();
 }
 
+// FUNCIONES DE FICHAS TÉCNICAS
+function filtrarCatFicha(cat) {
+    filtroCatFicha = cat;
+    renderizarFichas();
+}
+
+function renderizarFichas() {
+    const contenedor = document.getElementById('contenedor-fichas');
+    const busqueda = (document.getElementById('buscador-fichas')?.value || '').toLowerCase();
+    contenedor.innerHTML = '';
+
+    const filtradas = fichas.filter(f => {
+        const coincideCat = (filtroCatFicha === 'Todas' || f.categoria === filtroCatFicha);
+        const coincideTexto = f.nombre.toLowerCase().includes(busqueda) ||
+                              f.ingredientes.toLowerCase().includes(busqueda) ||
+                              f.montaje.toLowerCase().includes(busqueda) ||
+                              f.salon.toLowerCase().includes(busqueda);
+        return coincideCat && coincideTexto;
+    });
+
+    filtradas.forEach(f => {
+        contenedor.innerHTML += `
+        <div class="col-md-6">
+            <div class="card card-ficha shadow-sm h-100">
+                <div class="card-body d-flex flex-column justify-content-between">
+                    <div>
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <span class="badge bg-dark">${f.categoria}</span>
+                            <span class="badge bg-secondary">${f.tiempo}</span>
+                        </div>
+                        <h5 class="fw-bold mb-2">${f.nombre}</h5>
+                        <p class="small text-primary fw-semibold mb-2">Loza / Formato: ${f.loza}</p>
+                        
+                        <div class="bg-light p-2 rounded border mb-2 small">
+                            <strong>Ingredientes y Gramajes Estándar:</strong>
+                            <div style="white-space: pre-line;" class="mt-1">${f.ingredientes}</div>
+                        </div>
+
+                        <div class="small mb-3">
+                            <strong>Procedimiento de Preparación y Montaje:</strong>
+                            <div style="white-space: pre-line;" class="text-muted mt-1">${f.montaje}</div>
+                        </div>
+                    </div>
+
+                    <div class="box-salon p-2 rounded small mt-2">
+                        <strong>Nota Salón / Alérgenos:</strong><br>
+                        ${f.salon}
+                    </div>
+                </div>
+            </div>
+        </div>`;
+    });
+}
+
+// FUNCIONES DEL CONTADOR DE TRAZABILIDAD INTELIGENTE
+function renderizarTrazabilidad() {
+    const contenedor = document.getElementById('contenedor-traza');
+    const busqueda = (document.getElementById('buscador-traza')?.value || '').toLowerCase();
+    const criterioOrden = document.getElementById('orden-traza')?.value || 'carta';
+    contenedor.innerHTML = '';
+
+    const totalComandas = traza.reduce((acc, item) => acc + item.cant, 0);
+    document.getElementById('badge-total-traza').innerText = totalComandas;
+
+    let filtradas = traza.filter(item => {
+        const coincideCat = (filtroCatTraza === 'Todas' || item.cat === filtroCatTraza);
+        const coincideTexto = item.prep.toLowerCase().includes(busqueda) || 
+                              item.formato.toLowerCase().includes(busqueda) ||
+                              item.cat.toLowerCase().includes(busqueda);
+        const coincideVendidos = !mostrarSoloVendidos || item.cant > 0;
+        return coincideCat && coincideTexto && coincideVendidos;
+    });
+
+    filtradas.sort((a, b) => {
+        if (criterioOrden === 'recientes') {
+            return (b.ultimaHoraTS || 0) - (a.ultimaHoraTS || 0);
+        } else if (criterioOrden === 'antiguos') {
+            return (a.primeraHoraTS || Infinity) - (b.primeraHoraTS || Infinity);
+        } else if (criterioOrden === 'pendientes') {
+            const difA = a.cant - (a.anotadoEnHoja || 0);
+            const difB = b.cant - (b.anotadoEnHoja || 0);
+            return difB - difA;
+        }
+        return a.id - b.id;
+    });
+
+    if (filtradas.length === 0) {
+        contenedor.innerHTML = `<div class="col-12"><div class="alert alert-light border text-center">No hay preparaciones que coincidan con el filtro actual.</div></div>`;
+        return;
+    }
+
+    filtradas.forEach(item => {
+        const anotado = item.anotadoEnHoja || 0;
+        const diferencia = item.cant - anotado;
+        
+        let badgeHoja = '';
+        let bordeClase = '';
+        if (item.cant > 0) {
+            if (anotado === 0) {
+                badgeHoja = `<span class="badge bg-warning text-dark">NUEVO (Sin anotar en planilla)</span>`;
+                bordeClase = 'border-warning border-3';
+            } else if (diferencia > 0) {
+                badgeHoja = `<span class="badge bg-danger">+${diferencia} NUEVO (En planilla: ${anotado})</span>`;
+                bordeClase = 'border-danger border-3';
+            } else {
+                badgeHoja = `<span class="badge bg-primary">Anotado en planilla (${anotado})</span>`;
+                bordeClase = 'con-ventas';
+            }
+        }
+
+        const infoHora = item.ultimaHoraTexto ? `<small class="text-muted d-block mt-1">Última salida: ${item.ultimaHoraTexto}</small>` : '';
+
+        contenedor.innerHTML += `
+        <div class="col-md-6 col-lg-4">
+            <div class="card card-traza shadow-sm h-100 ${bordeClase}">
+                <div class="card-body p-2 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-center gap-2">
+                        <div class="overflow-hidden">
+                            <span class="badge bg-secondary" style="font-size: 0.65rem;">${item.cat}</span>
+                            ${badgeHoja}
+                            <h6 class="fw-bold mb-0 mt-1 text-truncate" title="${item.prep}">${item.prep}</h6>
+                            <div class="small text-primary fw-semibold text-truncate" title="${item.formato}">${item.formato}</div>
+                            ${infoHora}
+                        </div>
+                        <div class="d-flex align-items-center gap-1 flex-shrink-0">
+                            <button class="btn btn-outline-danger btn-contador" onclick="sumarTraza(${item.id}, -1)">-</button>
+                            <div class="num-contador ${item.cant > 0 ? 'text-success' : 'text-muted'}">${item.cant}</div>
+                            <button class="btn btn-success btn-contador shadow-sm" onclick="sumarTraza(${item.id}, 1)">+1</button>
+                        </div>
+                    </div>
+                    ${item.cant > 0 ? `
+                    <div class="mt-2 pt-1 border-top d-flex justify-content-between align-items-center">
+                        <button class="btn btn-sm ${diferencia === 0 ? 'btn-outline-secondary' : 'btn-primary'} w-100 py-0" onclick="sincronizarItemHoja(${item.id})">
+                            ${diferencia === 0 ? 'Cuadrado con planilla física' : 'Marcar como ya anotado'}
+                        </button>
+                    </div>` : ''}
+                </div>
+            </div>
+        </div>`;
+    });
+}
+
+function sumarTraza(id, cambio) {
+    const ahora = new Date();
+    const horaStr = ahora.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+    const timestamp = ahora.getTime();
+
+    traza = traza.map(item => {
+        if (item.id === id) {
+            const nuevoValor = Math.max(0, item.cant + cambio);
+            const primeraTS = (item.cant === 0 && nuevoValor > 0) ? timestamp : (nuevoValor === 0 ? null : item.primeraHoraTS);
+            return { 
+                ...item, 
+                cant: nuevoValor,
+                primeraHoraTS: primeraTS,
+                ultimaHoraTS: nuevoValor > 0 ? timestamp : null,
+                ultimaHoraTexto: nuevoValor > 0 ? horaStr : null,
+                anotadoEnHoja: nuevoValor === 0 ? 0 : (item.anotadoEnHoja || 0)
+            };
+        }
+        return item;
+    });
+    localStorage.setItem('kitchenOps_traza_v3', JSON.stringify(traza));
+    renderizarTrazabilidad();
+}
+
+function sincronizarItemHoja(id) {
+    traza = traza.map(item => item.id === id ? { ...item, anotadoEnHoja: item.cant } : item);
+    localStorage.setItem('kitchenOps_traza_v3', JSON.stringify(traza));
+    renderizarTrazabilidad();
+}
+
+function marcarTodoEnHoja() {
+    if (confirm("¿Marcar todos los platos actuales como 'Ya anotados en planilla'? Si sale un plato nuevo después de esto, el sistema te alertará.")) {
+        traza = traza.map(item => ({ ...item, anotadoEnHoja: item.cant }));
+        localStorage.setItem('kitchenOps_traza_v3', JSON.stringify(traza));
+        renderizarTrazabilidad();
+    }
+}
+
+function filtrarCatTraza(cat) {
+    filtroCatTraza = cat;
+    renderizarTrazabilidad();
+}
+
+function toggleSoloVendidos() {
+    mostrarSoloVendidos = !mostrarSoloVendidos;
+    const btn = document.getElementById('btn-solo-vendidos');
+    btn.className = mostrarSoloVendidos ? "btn btn-success btn-sm fw-bold" : "btn btn-outline-success btn-sm fw-bold";
+    btn.innerText = mostrarSoloVendidos ? "Mostrando Solo Vendidos (> 0)" : "Solo Vendidos (> 0)";
+    renderizarTrazabilidad();
+}
+
+function exportarTrazabilidadTexto() {
+    const vendidos = traza.filter(i => i.cant > 0);
+    const fecha = new Date().toLocaleDateString('es-CL');
+    const resp = document.getElementById('responsable-traza').value || 'Encargado';
+    const total = vendidos.reduce((acc, i) => acc + i.cant, 0);
+
+    let texto = `TRAZABILIDAD DE PREPARACIONES (${fecha})\n`;
+    texto += `Responsable: ${resp} | Total Salidas: ${total}\n`;
+    texto += `--------------------------------------------\n`;
+
+    const nuevosSinAnotar = vendidos.filter(v => (v.anotadoEnHoja || 0) === 0);
+    const modificados = vendidos.filter(v => (v.anotadoEnHoja || 0) > 0 && v.cant !== v.anotadoEnHoja);
+    const yaAnotados = vendidos.filter(v => v.cant === (v.anotadoEnHoja || 0));
+
+    if (nuevosSinAnotar.length > 0) {
+        texto += `PLATOS NUEVOS (AGREGAR A PLANILLA):\n`;
+        nuevosSinAnotar.forEach(v => texto += `• ${v.prep} (${v.formato}) -> CANT: ${v.cant} (${v.ultimaHoraTexto})\n`);
+        texto += `\n`;
+    }
+    if (modificados.length > 0) {
+        texto += `MODIFICADOS (ACTUALIZAR TOTAL):\n`;
+        modificados.forEach(v => texto += `• ${v.prep} (${v.formato}) -> Antes: ${v.anotadoEnHoja} | AHORA: ${v.cant}\n`);
+        texto += `\n`;
+    }
+    if (yaAnotados.length > 0) {
+        texto += `YA ANOTADOS SIN CAMBIOS:\n`;
+        yaAnotados.forEach(v => texto += `• ${v.prep} (${v.formato}): ${v.cant}\n`);
+    }
+
+    const caja = document.getElementById('caja-export-traza');
+    caja.innerText = texto;
+    caja.classList.remove('d-none');
+    navigator.clipboard.writeText(texto);
+    alert("Tabla de Trazabilidad copiada al portapapeles.");
+}
+
+function exportarTrazabilidadCSV() {
+    const vendidos = traza.filter(i => i.cant > 0);
+    if (vendidos.length === 0) return alert("Aún no hay preparaciones con cantidad mayor a 0 para exportar.");
+
+    const fecha = new Date().toLocaleDateString('es-CL');
+    const resp = document.getElementById('responsable-traza').value || 'Encargado';
+
+    let csv = "\uFEFFCATEGORIA;PREPARACION;FORMATO;FECHA;CANTIDAD;RESPONSABLE\n";
+    vendidos.forEach(v => {
+        csv += `"${v.cat}";"${v.prep}";"${v.formato}";"${fecha}";${v.cant};"${resp}"\n`;
+    });
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Trazabilidad_KitchenOps_${fecha.replace(/\//g, '-')}.csv`;
+    a.click();
+}
+
+function reiniciarTrazabilidad() {
+    if (confirm("¿Seguro que deseas poner todos los contadores de comandas en 0 para un nuevo día?")) {
+        traza = traza.map(item => ({ ...item, cant: 0, anotadoEnHoja: 0, primeraHoraTS: null, ultimaHoraTS: null, ultimaHoraTexto: null }));
+        localStorage.setItem('kitchenOps_traza_v3', JSON.stringify(traza));
+        document.getElementById('caja-export-traza').classList.add('d-none');
+        renderizarTrazabilidad();
+    }
+}
+
 function guardarNuevaTarea() {
     const tarea = document.getElementById('nt-tarea').value.trim();
     const cantidad = document.getElementById('nt-cantidad').value.trim();
@@ -573,22 +1109,46 @@ function guardarNuevaTarea() {
         guiaNovato: document.getElementById('nt-guia').value || "Seguir procedimiento operativo.",
         completado: false
     });
-    localStorage.setItem('kitchenOps_tareas_v2', JSON.stringify(tareas));
+    localStorage.setItem('kitchenOps_tareas_v3', JSON.stringify(tareas));
     renderizarTareas();
     bootstrap.Modal.getInstance(document.getElementById('modalNuevaTarea')).hide();
+}
+
+function guardarNuevaFicha() {
+    const nombre = document.getElementById('nf-nombre').value.trim();
+    const ingredientes = document.getElementById('nf-ingredientes').value.trim();
+    if (!nombre || !ingredientes) return alert("Por favor ingresa el nombre del producto y sus gramajes.");
+
+    const nuevaFicha = {
+        id: Date.now(),
+        nombre: nombre,
+        categoria: document.getElementById('nf-categoria').value,
+        tiempo: document.getElementById('nf-tiempo').value || "Estándar",
+        loza: document.getElementById('nf-loza').value || "Loza estándar",
+        ingredientes: ingredientes,
+        montaje: document.getElementById('nf-montaje').value || "Seguir estándar de presentación.",
+        salon: document.getElementById('nf-salon').value || "Verificar alérgenos."
+    };
+
+    fichas.push(nuevaFicha);
+    localStorage.setItem('kitchenOps_fichas_v3', JSON.stringify(fichas));
+    renderizarFichas();
+    bootstrap.Modal.getInstance(document.getElementById('modalNuevaFicha')).hide();
+    const tabFichas = new bootstrap.Tab(document.getElementById('tab-fichas-btn'));
+    tabFichas.show();
 }
 
 function eliminarTarea(id) {
     if (confirm("¿Eliminar esta tarea?")) {
         tareas = tareas.filter(t => t.id !== id);
-        localStorage.setItem('kitchenOps_tareas_v2', JSON.stringify(tareas));
+        localStorage.setItem('kitchenOps_tareas_v3', JSON.stringify(tareas));
         renderizarTareas();
     }
 }
 
 function cambiarEstado(id) {
     tareas = tareas.map(t => t.id === id ? { ...t, completado: !t.completado } : t);
-    localStorage.setItem('kitchenOps_tareas_v2', JSON.stringify(tareas));
+    localStorage.setItem('kitchenOps_tareas_v3', JSON.stringify(tareas));
     renderizarTareas();
 }
 
@@ -605,7 +1165,7 @@ function actualizarProgreso() {
 function reiniciarTurno() {
     if (confirm("¿Reiniciar checks para un nuevo turno?")) {
         tareas = tareas.map(t => ({ ...t, completado: false }));
-        localStorage.setItem('kitchenOps_tareas_v2', JSON.stringify(tareas));
+        localStorage.setItem('kitchenOps_tareas_v3', JSON.stringify(tareas));
         document.getElementById('notas-turno').value = '';
         document.getElementById('reporte-salida').classList.add('d-none');
         renderizarTareas();
@@ -615,26 +1175,42 @@ function reiniciarTurno() {
 function generarReporte() {
     const listas = tareas.filter(t => t.completado);
     const pendientes = tareas.filter(t => !t.completado);
+    const vendidos = traza.filter(i => i.cant > 0);
+    const totalPlatos = vendidos.reduce((acc, i) => acc + i.cant, 0);
     const notas = document.getElementById('notas-turno').value || "Sin observaciones.";
     const fecha = new Date().toLocaleDateString('es-CL');
     const resp = document.getElementById('responsable-traza').value || 'Encargado';
 
     let texto = `REPORTE OPERATIVO DE TURNO (${fecha})\n`;
     texto += `Responsable: ${resp}\n`;
-    texto += `Avance Protocolo: ${listas.length} de ${tareas.length} etapas completadas.\n\n`;
-    if (pendientes.length > 0) {
-        texto += `ETAPAS PENDIENTES:\n` + pendientes.map(p => `- [${p.estacion}] ${p.tarea}`).join('\n') + `\n\n`;
+    texto += `Protocolo Diario: ${listas.length} de ${tareas.length} etapas completadas.\n`;
+    texto += `Total Preparaciones Trazadas: ${totalPlatos} salidas.\n\n`;
+    
+    if (vendidos.length > 0) {
+        texto += `RESUMEN TRAZABILIDAD DEL DÍA:\n`;
+        vendidos.forEach(v => texto += `• ${v.prep} (${v.formato}): ${v.cant}\n`);
+        texto += `\n`;
     }
+
+    if (pendientes.length > 0) {
+        texto += `ETAPAS PENDIENTES:\n`;
+        pendientes.forEach(p => texto += `- [${p.estacion}] ${p.tarea}\n`);
+        texto += `\n`;
+    }
+
     texto += `NOVEDADES / PEDIDOS:\n${notas}`;
 
-    const caja = document.getElementById('reporte-salida');
-    caja.innerText = texto;
-    caja.classList.remove('d-none');
+    const cajaReporte = document.getElementById('reporte-salida');
+    cajaReporte.innerText = texto;
+    cajaReporte.classList.remove('d-none');
     navigator.clipboard.writeText(texto);
-    alert("Reporte copiado al portapapeles.");
+    alert("Resumen completo (Protocolo + Trazabilidad) copiado al portapapeles.");
 }
 
+// Inicializar todo
 renderizarTareas();
+renderizarFichas();
+renderizarTrazabilidad();
 </script>
 </body>
 </html>
